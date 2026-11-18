@@ -1,0 +1,28 @@
+.worktrees/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Django
+*.sqlite3
+media/
+staticfiles/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+.env.local
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
