@@ -1,0 +1,33 @@
+from django.conf import settings
+from django.db import models
+
+
+def invoice_upload_path(instance, filename):
+    return f"invoices/{filename}"
+
+
+class Invoice(models.Model):
+    SOURCE_MANUAL = "manual"
+    SOURCE_EMAIL = "email"
+    SOURCE_CHOICES = [(SOURCE_MANUAL, "Manual"), (SOURCE_EMAIL, "Email")]
+
+    STATUS_UPLOADED = "uploaded"
+    STATUS_EXTRACTED = "extracted"
+    STATUS_NEEDS_REVIEW = "needs_review"
+    STATUS_VALIDATED = "validated"
+    STATUS_CHOICES = [
+        (STATUS_UPLOADED, "Uploaded"),
+        (STATUS_EXTRACTED, "Extracted"),
+        (STATUS_NEEDS_REVIEW, "Needs Review"),
+        (STATUS_VALIDATED, "Validated"),
+    ]
+
+    file = models.FileField(upload_to=invoice_upload_path)
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=SOURCE_MANUAL)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_UPLOADED)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="invoices")
+    raw_ocr_text = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Invoice({self.id}, {self.status})"

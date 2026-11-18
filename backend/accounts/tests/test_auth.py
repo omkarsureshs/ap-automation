@@ -14,7 +14,6 @@ def test_login_returns_access_and_refresh_tokens(client, django_user_model):
     assert "access" in resp.json() and "refresh" in resp.json()
 
 
-@pytest.mark.xfail(reason="/api/invoices/ lands in Task 3", strict=False)
 def test_has_role_permission_rejects_wrong_role(client, django_user_model):
     django_user_model.objects.create_user(email="v@x.com", password="pw12345!", role="vendor")
     login = client.post("/api/auth/login/", {"email": "v@x.com", "password": "pw12345!"}).json()
