@@ -30,7 +30,8 @@ python manage.py runserver
 Environment variables (all optional, default to the `docker-compose.yml` values):
 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`,
 `POSTGRES_PORT`, `TESSERACT_CMD` (path to the `tesseract` binary if it isn't
-on `PATH`).
+on `PATH`), `POPPLER_PATH` (path to poppler's `bin/` directory, needed by
+`pdf2image` for PDF invoices, if not on `PATH`).
 
 Run tests: `pytest` from `backend/`.
 

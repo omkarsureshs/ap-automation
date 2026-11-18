@@ -101,3 +101,4 @@ SIMPLE_JWT = {
 }
 
 TESSERACT_CMD = os.environ.get("TESSERACT_CMD", "")
+POPPLER_PATH = os.environ.get("POPPLER_PATH", "") or None

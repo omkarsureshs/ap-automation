@@ -1,5 +1,6 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from PIL import Image, ImageDraw, ImageFont
 from rest_framework.test import APIClient
 
 MINIMAL_PDF = (
@@ -36,3 +37,14 @@ def pdf_file():
 @pytest.fixture
 def txt_file():
     return SimpleUploadedFile("notes.txt", b"not an invoice", content_type="text/plain")
+
+
+@pytest.fixture
+def sample_invoice_image_path(tmp_path):
+    img = Image.new("RGB", (600, 150), color="white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default(size=48)
+    draw.text((20, 40), "INVOICE", fill="black", font=font)
+    path = tmp_path / "sample_invoice.png"
+    img.save(path)
+    return str(path)
