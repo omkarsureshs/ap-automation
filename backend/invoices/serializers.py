@@ -1,14 +1,22 @@
 from rest_framework import serializers
 
-from invoices.models import Invoice
+from invoices.models import Invoice, InvoiceException
 
 ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg")
 
 
+class InvoiceExceptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceException
+        fields = ["id", "reason", "created_at"]
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
+    exceptions = InvoiceExceptionSerializer(many=True, read_only=True)
+
     class Meta:
         model = Invoice
-        fields = ["id", "file", "source", "status", "uploaded_by", "raw_ocr_text", "created_at"]
+        fields = ["id", "file", "source", "status", "uploaded_by", "raw_ocr_text", "created_at", "exceptions"]
         read_only_fields = ["status", "uploaded_by", "raw_ocr_text", "created_at"]
 
     def validate_file(self, value):

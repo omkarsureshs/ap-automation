@@ -2,9 +2,10 @@ from rest_framework import generics
 
 from accounts.permissions import HasRole
 from invoices.extraction import extract_fields
-from invoices.models import Invoice
+from invoices.models import Invoice, InvoiceException
 from invoices.ocr import OcrError, run_ocr
 from invoices.serializers import InvoiceSerializer
+from invoices.validation import validate_invoice
 
 
 class InvoiceUploadView(generics.ListCreateAPIView):
@@ -23,6 +24,15 @@ class InvoiceUploadView(generics.ListCreateAPIView):
             invoice.extracted_gstin = fields["gstin"]
             invoice.extracted_total_amount = fields["total_amount"]
             invoice.extracted_vendor_name = fields["vendor_name"]
+
+            reasons = validate_invoice(invoice)
+            if reasons:
+                InvoiceException.objects.bulk_create(
+                    [InvoiceException(invoice=invoice, reason=reason) for reason in reasons]
+                )
+                invoice.status = Invoice.STATUS_NEEDS_REVIEW
+            else:
+                invoice.status = Invoice.STATUS_VALIDATED
         except OcrError:
             invoice.status = Invoice.STATUS_NEEDS_REVIEW
         invoice.save()

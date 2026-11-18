@@ -37,3 +37,12 @@ class Invoice(models.Model):
 
     def __str__(self):
         return f"Invoice({self.id}, {self.status})"
+
+
+class InvoiceException(models.Model):
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="exceptions")
+    reason = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"InvoiceException(invoice={self.invoice_id}, reason={self.reason!r})"
