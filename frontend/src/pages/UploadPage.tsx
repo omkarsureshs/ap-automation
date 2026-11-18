@@ -12,8 +12,8 @@ export function UploadPage() {
   async function refresh() {
     try {
       setInvoices(await listInvoices())
-    } catch {
-      setError('Could not load invoices.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load invoices.')
     }
   }
 
@@ -27,8 +27,8 @@ export function UploadPage() {
     try {
       await uploadInvoice(file)
       await refresh()
-    } catch {
-      setError('Upload failed — check the file is a PDF or image.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed.')
     } finally {
       setUploading(false)
     }
@@ -75,10 +75,17 @@ export function UploadPage() {
         </thead>
         <tbody>
           {invoices.map((invoice) => (
-            <tr key={invoice.id} className="border-b border-border">
+            <tr key={invoice.id} className="border-b border-border align-top">
               <td className="py-2">{invoice.file.split('/').pop()}</td>
               <td className="py-2">
                 <Badge status={invoice.status} />
+                {invoice.exceptions.length > 0 && (
+                  <ul className="mt-1 list-disc pl-4 text-xs text-destructive">
+                    {invoice.exceptions.map((exception) => (
+                      <li key={exception.id}>{exception.reason}</li>
+                    ))}
+                  </ul>
+                )}
               </td>
               <td className="py-2">{new Date(invoice.created_at).toLocaleString()}</td>
             </tr>

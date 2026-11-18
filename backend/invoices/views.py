@@ -33,6 +33,8 @@ class InvoiceUploadView(generics.ListCreateAPIView):
                 invoice.status = Invoice.STATUS_NEEDS_REVIEW
             else:
                 invoice.status = Invoice.STATUS_VALIDATED
-        except OcrError:
+        except OcrError as exc:
+            reason = f"OCR failed: {exc}"[:255]
+            InvoiceException.objects.create(invoice=invoice, reason=reason)
             invoice.status = Invoice.STATUS_NEEDS_REVIEW
         invoice.save()

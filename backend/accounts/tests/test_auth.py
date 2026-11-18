@@ -7,6 +7,21 @@ def test_register_creates_user_with_role(client):
     assert resp.status_code == 201
 
 
+@pytest.mark.django_db
+def test_register_ignores_client_supplied_elevated_role(client, django_user_model):
+    resp = client.post(
+        "/api/auth/register/", {"email": "wannabe-admin@x.com", "password": "pw12345!", "role": "ap_admin"}
+    )
+    assert resp.status_code == 201
+    assert django_user_model.objects.get(email="wannabe-admin@x.com").role == "requester"
+
+
+@pytest.mark.django_db
+def test_register_rejects_weak_password(client):
+    resp = client.post("/api/auth/register/", {"email": "weak@x.com", "password": "123", "role": "requester"})
+    assert resp.status_code == 400
+
+
 def test_login_returns_access_and_refresh_tokens(client, django_user_model):
     django_user_model.objects.create_user(email="a@x.com", password="pw12345!", role="approver")
     resp = client.post("/api/auth/login/", {"email": "a@x.com", "password": "pw12345!"})

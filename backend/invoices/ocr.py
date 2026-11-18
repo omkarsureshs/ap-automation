@@ -3,8 +3,9 @@ from pathlib import Path
 import pytesseract
 from django.conf import settings
 from pdf2image import convert_from_path
-from pdf2image.exceptions import PDFPageCountError, PDFSyntaxError
+from pdf2image.exceptions import PDFInfoNotInstalledError, PDFPageCountError, PDFSyntaxError
 from PIL import Image, UnidentifiedImageError
+from PIL.Image import DecompressionBombError
 
 if settings.TESSERACT_CMD:
     pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
@@ -33,6 +34,15 @@ def run_ocr(file_path: str) -> str:
             pytesseract.image_to_string(_preprocess(page), config="--psm 6")
             for page in pages
         ]
-    except (PDFPageCountError, PDFSyntaxError, UnidentifiedImageError, FileNotFoundError, OSError) as exc:
+    except (
+        PDFPageCountError,
+        PDFSyntaxError,
+        PDFInfoNotInstalledError,
+        UnidentifiedImageError,
+        DecompressionBombError,
+        pytesseract.TesseractError,
+        FileNotFoundError,
+        OSError,
+    ) as exc:
         raise OcrError(f"Could not OCR {file_path}: {exc}") from exc
     return "\n".join(texts)
