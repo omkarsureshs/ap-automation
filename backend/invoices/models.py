@@ -29,5 +29,11 @@ class Invoice(models.Model):
     raw_ocr_text = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    extracted_invoice_no = models.CharField(max_length=100, null=True, blank=True)
+    extracted_invoice_date = models.CharField(max_length=50, null=True, blank=True)
+    extracted_gstin = models.CharField(max_length=20, null=True, blank=True)
+    extracted_total_amount = models.CharField(max_length=50, null=True, blank=True)
+    extracted_vendor_name = models.CharField(max_length=255, null=True, blank=True)
+
     def __str__(self):
         return f"Invoice({self.id}, {self.status})"
