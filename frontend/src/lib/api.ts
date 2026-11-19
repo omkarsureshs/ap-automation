@@ -106,3 +106,88 @@ export async function uploadInvoice(file: File): Promise<Invoice> {
   if (!resp.ok) throw new Error(await errorMessage(resp, 'Upload failed'))
   return resp.json()
 }
+
+export interface Vendor {
+  id: number
+  name: string
+  gstin: string
+  email: string
+  bank_account_number: string
+  bank_ifsc?: string
+  is_active: boolean
+  created_at: string
+}
+
+export interface PurchaseOrder {
+  id: number
+  po_number: string
+  vendor: number
+  total_amount: string
+  created_at: string
+}
+
+export interface GoodsReceiptNote {
+  id: number
+  grn_number: string
+  purchase_order: number
+  received_amount: string
+  created_at: string
+}
+
+export interface CsvImportResult {
+  created: number
+  errors: { row: number; message: string }[]
+}
+
+async function handleJsonResponse<T>(resp: Response, fallback: string): Promise<T> {
+  if (resp.status === 401) {
+    logout()
+    throw new Error('Session expired — please log in again.')
+  }
+  if (!resp.ok) throw new Error(await errorMessage(resp, fallback))
+  return resp.json()
+}
+
+export async function listVendors(): Promise<Vendor[]> {
+  const resp = await authedFetch('/api/vendors/')
+  return handleJsonResponse(resp, 'Failed to list vendors')
+}
+
+export async function createVendor(data: {
+  name: string
+  gstin: string
+  email: string
+  bank_account_number: string
+  bank_ifsc: string
+}): Promise<Vendor> {
+  const resp = await authedFetch('/api/vendors/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleJsonResponse(resp, 'Failed to create vendor')
+}
+
+export async function listPurchaseOrders(): Promise<PurchaseOrder[]> {
+  const resp = await authedFetch('/api/procurement/purchase-orders/')
+  return handleJsonResponse(resp, 'Failed to list purchase orders')
+}
+
+export async function importPurchaseOrdersCsv(file: File): Promise<CsvImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const resp = await authedFetch('/api/procurement/purchase-orders/import-csv/', { method: 'POST', body: formData })
+  return handleJsonResponse(resp, 'CSV import failed')
+}
+
+export async function listGrns(): Promise<GoodsReceiptNote[]> {
+  const resp = await authedFetch('/api/procurement/grns/')
+  return handleJsonResponse(resp, 'Failed to list GRNs')
+}
+
+export async function importGrnsCsv(file: File): Promise<CsvImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const resp = await authedFetch('/api/procurement/grns/import-csv/', { method: 'POST', body: formData })
+  return handleJsonResponse(resp, 'CSV import failed')
+}
