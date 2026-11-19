@@ -7,6 +7,7 @@ from invoices.ocr import OcrError, run_ocr
 from invoices.serializers import InvoiceSerializer
 from invoices.validation import validate_invoice
 from procurement.matching import match_invoice
+from workflow.services import start_approval
 
 
 class InvoiceUploadView(generics.ListCreateAPIView):
@@ -43,6 +44,12 @@ class InvoiceUploadView(generics.ListCreateAPIView):
                         invoice.match_status = Invoice.MATCH_STATUS_MISMATCHED
                     else:
                         invoice.match_status = Invoice.MATCH_STATUS_MATCHED
+                        try:
+                            start_approval(invoice)
+                            invoice.status = Invoice.STATUS_PENDING_APPROVAL
+                        except ValueError as exc:
+                            InvoiceException.objects.create(invoice=invoice, reason=str(exc)[:255])
+                            invoice.status = Invoice.STATUS_NEEDS_REVIEW
         except OcrError as exc:
             reason = f"OCR failed: {exc}"[:255]
             InvoiceException.objects.create(invoice=invoice, reason=reason)

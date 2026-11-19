@@ -15,11 +15,17 @@ class Invoice(models.Model):
     STATUS_EXTRACTED = "extracted"
     STATUS_NEEDS_REVIEW = "needs_review"
     STATUS_VALIDATED = "validated"
+    STATUS_PENDING_APPROVAL = "pending_approval"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
     STATUS_CHOICES = [
         (STATUS_UPLOADED, "Uploaded"),
         (STATUS_EXTRACTED, "Extracted"),
         (STATUS_NEEDS_REVIEW, "Needs Review"),
         (STATUS_VALIDATED, "Validated"),
+        (STATUS_PENDING_APPROVAL, "Pending Approval"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
     ]
 
     file = models.FileField(upload_to=invoice_upload_path)

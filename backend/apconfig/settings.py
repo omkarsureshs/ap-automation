@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "invoices",
     "vendors",
     "procurement",
+    "workflow",
 ]
 
 MIDDLEWARE = [

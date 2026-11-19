@@ -37,6 +37,11 @@ def auth_client_ap_admin(db, django_user_model):
 
 
 @pytest.fixture
+def auth_client_approver(db, django_user_model):
+    return _auth_client(django_user_model, "approver@x.com", "approver")
+
+
+@pytest.fixture
 def pdf_file():
     return SimpleUploadedFile("invoice.pdf", MINIMAL_PDF, content_type="application/pdf")
 

@@ -46,7 +46,11 @@ def test_upload_with_linked_po_within_tolerance_is_matched(
     auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice
 ):
     from procurement.models import PurchaseOrder
+    from workflow.models import ApprovalRule
 
+    ApprovalRule.objects.create(
+        min_amount="0.00", max_amount="100000.00", approver_roles=["approver"], escalation_hours=24
+    )
     po = PurchaseOrder.objects.create(
         po_number="PO-UPLOAD-1", vendor=known_vendor_for_sample_invoice, total_amount="5000.00"
     )
@@ -55,7 +59,7 @@ def test_upload_with_linked_po_within_tolerance_is_matched(
     )
     assert resp.status_code == 201
     body = resp.json()
-    assert body["status"] == "validated"
+    assert body["status"] == "pending_approval"
     assert body["match_status"] == "matched"
     assert body["exceptions"] == []
 
@@ -75,3 +79,21 @@ def test_upload_with_linked_po_beyond_tolerance_is_mismatched(
     body = resp.json()
     assert body["match_status"] == "mismatched"
     assert len(body["exceptions"]) > 0
+
+
+def test_upload_matched_with_no_approval_rule_covering_amount_needs_review(
+    auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice
+):
+    from procurement.models import PurchaseOrder
+
+    po = PurchaseOrder.objects.create(
+        po_number="PO-UPLOAD-3", vendor=known_vendor_for_sample_invoice, total_amount="5000.00"
+    )
+    resp = auth_client_requester.post(
+        "/api/invoices/", {"file": valid_invoice_image_file, "purchase_order": po.id}, format="multipart"
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["match_status"] == "matched"
+    assert body["status"] == "needs_review"
+    assert any("approval rule" in e["reason"].lower() for e in body["exceptions"])
