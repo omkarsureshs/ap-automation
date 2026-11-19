@@ -11,6 +11,8 @@ export interface Invoice {
   file: string
   source: string
   status: string
+  match_status: string
+  purchase_order: number | null
   created_at: string
   exceptions: InvoiceException[]
 }
