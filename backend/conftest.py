@@ -90,3 +90,16 @@ def valid_invoice_image_file():
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return SimpleUploadedFile("valid_invoice.png", buf.getvalue(), content_type="image/png")
+
+
+@pytest.fixture
+def known_vendor_for_sample_invoice(db):
+    from vendors.models import Vendor
+
+    return Vendor.objects.create(
+        name="Acme Supplies Pvt Ltd",
+        gstin="27AAACC1206D1ZG",
+        email="billing@acme.test",
+        bank_account_number="1234567890",
+        bank_ifsc="HDFC0001234",
+    )

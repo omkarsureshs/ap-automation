@@ -29,7 +29,7 @@ def test_upload_ocr_failure_creates_exception_with_reason(auth_client_requester,
     assert any("ocr" in e["reason"].lower() for e in body["exceptions"])
 
 
-def test_upload_real_invoice_image_reaches_validated(auth_client_requester, valid_invoice_image_file):
+def test_upload_real_invoice_image_reaches_validated(auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice):
     resp = auth_client_requester.post("/api/invoices/", {"file": valid_invoice_image_file}, format="multipart")
     assert resp.status_code == 201
     body = resp.json()
