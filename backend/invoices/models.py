@@ -35,6 +35,20 @@ class Invoice(models.Model):
     extracted_total_amount = models.CharField(max_length=50, null=True, blank=True)
     extracted_vendor_name = models.CharField(max_length=255, null=True, blank=True)
 
+    MATCH_STATUS_UNMATCHED = "unmatched"
+    MATCH_STATUS_MATCHED = "matched"
+    MATCH_STATUS_MISMATCHED = "mismatched"
+    MATCH_STATUS_CHOICES = [
+        (MATCH_STATUS_UNMATCHED, "Unmatched"),
+        (MATCH_STATUS_MATCHED, "Matched"),
+        (MATCH_STATUS_MISMATCHED, "Mismatched"),
+    ]
+
+    purchase_order = models.ForeignKey(
+        "procurement.PurchaseOrder", null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices"
+    )
+    match_status = models.CharField(max_length=20, choices=MATCH_STATUS_CHOICES, default=MATCH_STATUS_UNMATCHED)
+
     def __str__(self):
         return f"Invoice({self.id}, {self.status})"
 

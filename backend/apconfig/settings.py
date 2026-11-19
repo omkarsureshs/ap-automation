@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "accounts",
     "invoices",
     "vendors",
+    "procurement",
 ]
 
 MIDDLEWARE = [
