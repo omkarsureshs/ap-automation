@@ -6,6 +6,7 @@ from invoices.models import Invoice, InvoiceException
 from invoices.ocr import OcrError, run_ocr
 from invoices.serializers import InvoiceSerializer
 from invoices.validation import validate_invoice
+from procurement.matching import match_invoice
 
 
 class InvoiceUploadView(generics.ListCreateAPIView):
@@ -33,6 +34,15 @@ class InvoiceUploadView(generics.ListCreateAPIView):
                 invoice.status = Invoice.STATUS_NEEDS_REVIEW
             else:
                 invoice.status = Invoice.STATUS_VALIDATED
+                if invoice.purchase_order is not None:
+                    match_reasons = match_invoice(invoice)
+                    if match_reasons:
+                        InvoiceException.objects.bulk_create(
+                            [InvoiceException(invoice=invoice, reason=reason) for reason in match_reasons]
+                        )
+                        invoice.match_status = Invoice.MATCH_STATUS_MISMATCHED
+                    else:
+                        invoice.match_status = Invoice.MATCH_STATUS_MATCHED
         except OcrError as exc:
             reason = f"OCR failed: {exc}"[:255]
             InvoiceException.objects.create(invoice=invoice, reason=reason)

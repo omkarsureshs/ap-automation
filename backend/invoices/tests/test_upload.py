@@ -40,3 +40,38 @@ def test_upload_real_invoice_image_reaches_validated(auth_client_requester, vali
 def test_vendor_role_cannot_list_invoices(auth_client_vendor):
     resp = auth_client_vendor.get("/api/invoices/")
     assert resp.status_code == 403
+
+
+def test_upload_with_linked_po_within_tolerance_is_matched(
+    auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice
+):
+    from procurement.models import PurchaseOrder
+
+    po = PurchaseOrder.objects.create(
+        po_number="PO-UPLOAD-1", vendor=known_vendor_for_sample_invoice, total_amount="5000.00"
+    )
+    resp = auth_client_requester.post(
+        "/api/invoices/", {"file": valid_invoice_image_file, "purchase_order": po.id}, format="multipart"
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["status"] == "validated"
+    assert body["match_status"] == "matched"
+    assert body["exceptions"] == []
+
+
+def test_upload_with_linked_po_beyond_tolerance_is_mismatched(
+    auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice
+):
+    from procurement.models import PurchaseOrder
+
+    po = PurchaseOrder.objects.create(
+        po_number="PO-UPLOAD-2", vendor=known_vendor_for_sample_invoice, total_amount="9000.00"
+    )
+    resp = auth_client_requester.post(
+        "/api/invoices/", {"file": valid_invoice_image_file, "purchase_order": po.id}, format="multipart"
+    )
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["match_status"] == "mismatched"
+    assert len(body["exceptions"]) > 0
