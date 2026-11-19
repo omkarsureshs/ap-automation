@@ -2,50 +2,124 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Ledger design system — see docs/superpowers/specs/2026-11-19-frontend-redesign-design.md
+   Light values on :root; dark values both under the OS "prefers dark" query
+   (so dark mode works with no toggle UI) and under .dark (kept for any
+   future manual toggle, unused today). */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --radius: 0.375rem;
+
+  --paper: #F6F6F3;
+  --paper-raised: #FFFFFF;
+  --ink: #1B2430;
+  --ink-soft: #5B6472;
+  --ledger: #1F3A5F;
+  --ledger-soft: #E7ECF2;
+  --hairline: #D9D9D3;
+  --approved: #1E6B4F;
+  --approved-soft: #E3F1EA;
+  --pending: #A86A1A;
+  --pending-soft: #FBEEDD;
+  --exception: #B3402F;
+  --exception-soft: #FBEAE6;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--ledger);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--ledger-soft);
+  --secondary-foreground: var(--ledger);
+  --muted: var(--paper-raised);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--ledger-soft);
+  --accent-foreground: var(--ledger);
+  --destructive: var(--exception);
+  --destructive-foreground: #FFFFFF;
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--ledger);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14181D;
+    --paper-raised: #1B2026;
+    --ink: #E9EAE6;
+    --ink-soft: #9BA3AE;
+    --ledger: #7CA0CC;
+    --ledger-soft: #22303F;
+    --hairline: #2B3139;
+    --approved: #5FCB9C;
+    --approved-soft: #1A2E26;
+    --pending: #E3A75C;
+    --pending-soft: #322312;
+    --exception: #E68B7B;
+    --exception-soft: #342019;
+
+    --background: var(--paper);
+    --foreground: var(--ink);
+    --card: var(--paper-raised);
+    --card-foreground: var(--ink);
+    --popover: var(--paper-raised);
+    --popover-foreground: var(--ink);
+    --primary: var(--ledger);
+    --primary-foreground: #0E1216;
+    --secondary: var(--ledger-soft);
+    --secondary-foreground: var(--ledger);
+    --muted: var(--paper-raised);
+    --muted-foreground: var(--ink-soft);
+    --accent: var(--ledger-soft);
+    --accent-foreground: var(--ledger);
+    --destructive: var(--exception);
+    --destructive-foreground: #0E1216;
+    --border: var(--hairline);
+    --input: var(--hairline);
+    --ring: var(--ledger);
+  }
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --paper: #14181D;
+  --paper-raised: #1B2026;
+  --ink: #E9EAE6;
+  --ink-soft: #9BA3AE;
+  --ledger: #7CA0CC;
+  --ledger-soft: #22303F;
+  --hairline: #2B3139;
+  --approved: #5FCB9C;
+  --approved-soft: #1A2E26;
+  --pending: #E3A75C;
+  --pending-soft: #322312;
+  --exception: #E68B7B;
+  --exception-soft: #342019;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--ledger);
+  --primary-foreground: #0E1216;
+  --secondary: var(--ledger-soft);
+  --secondary-foreground: var(--ledger);
+  --muted: var(--paper-raised);
+  --muted-foreground: var(--ink-soft);
+  --accent: var(--ledger-soft);
+  --accent-foreground: var(--ledger);
+  --destructive: var(--exception);
+  --destructive-foreground: #0E1216;
+  --border: var(--hairline);
+  --input: var(--hairline);
+  --ring: var(--ledger);
 }
 
 @theme inline {
+  --font-sans: "Public Sans", -apple-system, "Segoe UI", sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -61,9 +135,19 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-ledger: var(--ledger);
+  --color-ledger-soft: var(--ledger-soft);
+  --color-hairline: var(--hairline);
+  --color-approved: var(--approved);
+  --color-approved-soft: var(--approved-soft);
+  --color-pending: var(--pending);
+  --color-pending-soft: var(--pending-soft);
+  --color-exception: var(--exception);
+  --color-exception-soft: var(--exception-soft);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -75,6 +159,12 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 }
