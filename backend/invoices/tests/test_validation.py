@@ -111,3 +111,17 @@ def test_validate_invoice_flags_inactive_vendor(invoice_with_all_fields, inactiv
 def test_validate_invoice_passes_for_active_known_vendor(invoice_with_all_fields, active_vendor):
     reasons = validate_invoice(invoice_with_all_fields)
     assert not any("vendor" in r.lower() for r in reasons)
+
+
+def test_validate_invoice_flags_duplicate_of_approved_invoice(db, uploader, active_vendor):
+    _make_invoice(uploader, status=Invoice.STATUS_APPROVED)
+    second = _make_invoice(uploader, status=Invoice.STATUS_EXTRACTED)
+    reasons = validate_invoice(second)
+    assert any("duplicate" in r.lower() for r in reasons)
+
+
+def test_validate_invoice_does_not_flag_duplicate_of_rejected_invoice(db, uploader, active_vendor):
+    _make_invoice(uploader, status=Invoice.STATUS_REJECTED)
+    second = _make_invoice(uploader, status=Invoice.STATUS_EXTRACTED)
+    reasons = validate_invoice(second)
+    assert not any("duplicate" in r.lower() for r in reasons)

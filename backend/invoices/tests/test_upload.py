@@ -43,11 +43,12 @@ def test_vendor_role_cannot_list_invoices(auth_client_vendor):
 
 
 def test_upload_with_linked_po_within_tolerance_is_matched(
-    auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice
+    auth_client_requester, valid_invoice_image_file, known_vendor_for_sample_invoice, django_user_model
 ):
     from procurement.models import PurchaseOrder
     from workflow.models import ApprovalRule
 
+    django_user_model.objects.create_user(email="approver-upload@x.com", password="pw12345!", role="approver")
     ApprovalRule.objects.create(
         min_amount="0.00", max_amount="100000.00", approver_roles=["approver"], escalation_hours=24
     )
@@ -78,6 +79,7 @@ def test_upload_with_linked_po_beyond_tolerance_is_mismatched(
     assert resp.status_code == 201
     body = resp.json()
     assert body["match_status"] == "mismatched"
+    assert body["status"] == "needs_review"
     assert len(body["exceptions"]) > 0
 
 

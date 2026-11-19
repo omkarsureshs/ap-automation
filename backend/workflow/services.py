@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.utils import timezone
 
-from invoices.models import Invoice
+from invoices.models import Invoice, InvoiceException
 from workflow.models import ApprovalRule, ApprovalStep
 from workflow.notifications import notify
 
@@ -32,7 +32,12 @@ def start_approval(invoice: Invoice) -> list[ApprovalStep]:
     ]
 
     for step in steps:
-        for approver in User.objects.filter(role=step.approver_role, is_active=True):
+        approvers = User.objects.filter(role=step.approver_role, is_active=True)
+        if not approvers.exists():
+            InvoiceException.objects.create(
+                invoice=invoice, reason=f"No active {step.approver_role} user to approve this invoice"[:255]
+            )
+        for approver in approvers:
             notify(approver, f"Invoice #{invoice.pk} is waiting for your approval")
 
     return steps
@@ -46,16 +51,25 @@ def decide_step(step: ApprovalStep, user, approve: bool) -> ApprovalStep:
         if step.status != ApprovalStep.STATUS_PENDING:
             raise AlreadyDecidedError(f"Step {step.pk} is already {step.status}")
 
+        # Lock the invoice row too: two approvers deciding their own parallel
+        # steps at nearly the same instant both need to see each other's
+        # decision before checking whether every step is now resolved.
+        invoice = Invoice.objects.select_for_update().get(pk=step.invoice_id)
+
         step.status = ApprovalStep.STATUS_APPROVED if approve else ApprovalStep.STATUS_REJECTED
         step.decided_at = timezone.now()
         step.decided_by = user
         step.save()
 
-        invoice = step.invoice
         if not approve:
+            invoice.approval_steps.filter(status=ApprovalStep.STATUS_PENDING).update(
+                status=ApprovalStep.STATUS_REJECTED
+            )
             invoice.status = Invoice.STATUS_REJECTED
             invoice.save()
-        elif not invoice.approval_steps.exclude(status=ApprovalStep.STATUS_APPROVED).exists():
+        elif not invoice.approval_steps.exclude(
+            status__in=[ApprovalStep.STATUS_APPROVED, ApprovalStep.STATUS_ESCALATED]
+        ).exists():
             invoice.status = Invoice.STATUS_APPROVED
             invoice.save()
 

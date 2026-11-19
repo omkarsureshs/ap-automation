@@ -58,6 +58,18 @@ def test_notify_creates_notification_and_sends_email(db, mailoutbox, user):
     assert "Hello there" in mailoutbox[0].body
 
 
+def test_notify_still_creates_notification_when_email_sending_fails(db, user, monkeypatch):
+    def _raise(*args, **kwargs):
+        raise OSError("SMTP connection refused")
+
+    monkeypatch.setattr("workflow.notifications.send_mail", _raise)
+
+    notification = notify(user, "Hello despite the outage")
+
+    assert isinstance(notification, Notification)
+    assert notification.recipient == user
+
+
 def test_start_approval_notifies_each_assigned_approver(db, mailoutbox, approval_rule_two_approvers, invoice, django_user_model):
     approver_user = django_user_model.objects.create_user(email="approver1@x.com", password="pw12345!", role="approver")
     admin_user = django_user_model.objects.create_user(email="admin1@x.com", password="pw12345!", role="ap_admin")

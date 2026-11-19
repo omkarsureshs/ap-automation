@@ -70,3 +70,20 @@ def test_match_invoice_3way_flags_grn_invoice_mismatch(uploader, po):
 def test_match_invoice_with_no_purchase_order_returns_unmatched_reason(invoice_without_po):
     reasons = match_invoice(invoice_without_po)
     assert reasons == ["No purchase order linked — cannot match"]
+
+
+def test_match_invoice_flags_vendor_mismatch_between_invoice_and_po(db, uploader, po):
+    other_vendor_gstin = "29AABCU9603R1ZM"
+    invoice = Invoice.objects.create(
+        file="invoices/test.pdf", uploaded_by=uploader, extracted_total_amount="1000.00",
+        extracted_gstin=other_vendor_gstin, purchase_order=po,
+    )
+    reasons = match_invoice(invoice)
+    assert any("vendor" in r.lower() for r in reasons)
+
+
+def test_match_invoice_3way_sums_multiple_grns_against_the_same_po(db, uploader, po):
+    GoodsReceiptNote.objects.create(grn_number="GRN-SPLIT-1", purchase_order=po, received_amount="500.00")
+    GoodsReceiptNote.objects.create(grn_number="GRN-SPLIT-2", purchase_order=po, received_amount="500.00")
+    invoice = _invoice(uploader, purchase_order=po, amount="1000.00")
+    assert match_invoice(invoice) == []

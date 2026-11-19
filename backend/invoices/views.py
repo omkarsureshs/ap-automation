@@ -42,6 +42,7 @@ class InvoiceUploadView(generics.ListCreateAPIView):
                             [InvoiceException(invoice=invoice, reason=reason) for reason in match_reasons]
                         )
                         invoice.match_status = Invoice.MATCH_STATUS_MISMATCHED
+                        invoice.status = Invoice.STATUS_NEEDS_REVIEW
                     else:
                         invoice.match_status = Invoice.MATCH_STATUS_MATCHED
                         try:

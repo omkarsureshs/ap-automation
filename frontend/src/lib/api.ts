@@ -192,9 +192,18 @@ export async function importGrnsCsv(file: File): Promise<CsvImportResult> {
   return handleJsonResponse(resp, 'CSV import failed')
 }
 
+export interface InvoiceSummary {
+  id: number
+  extracted_invoice_no: string | null
+  extracted_vendor_name: string | null
+  extracted_total_amount: string | null
+  file: string
+}
+
 export interface ApprovalStep {
   id: number
   invoice: number
+  invoice_detail: InvoiceSummary
   rule: number
   sequence_order: number
   approver_role: string

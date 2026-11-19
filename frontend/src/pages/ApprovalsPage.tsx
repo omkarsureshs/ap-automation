@@ -46,7 +46,18 @@ export function ApprovalsPage() {
         <tbody>
           {steps.map((step) => (
             <tr key={step.id} className="border-b border-border align-top">
-              <td className="py-2">Invoice #{step.invoice}</td>
+              <td className="py-2">
+                <div className="font-medium">
+                  Invoice #{step.invoice}
+                  {step.invoice_detail.extracted_invoice_no ? ` — ${step.invoice_detail.extracted_invoice_no}` : ''}
+                </div>
+                <div className="text-muted-foreground">
+                  {step.invoice_detail.extracted_vendor_name ?? 'Unknown vendor'}
+                  {step.invoice_detail.extracted_total_amount
+                    ? ` · ${step.invoice_detail.extracted_total_amount}`
+                    : ''}
+                </div>
+              </td>
               <td className="py-2">
                 <div className="flex gap-2">
                   <Button

@@ -23,7 +23,14 @@ class ApprovalStepViewSet(viewsets.ReadOnlyModelViewSet):
         if step.approver_role != request.user.role:
             return Response(status=status.HTTP_403_FORBIDDEN)
 
-        approve = request.data.get("approve") in (True, "true", "True", "1", 1)
+        approve_raw = request.data.get("approve")
+        if approve_raw in (True, "true", "True"):
+            approve = True
+        elif approve_raw in (False, "false", "False"):
+            approve = False
+        else:
+            return Response({"detail": "'approve' must be a boolean"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             step = decide_step(step, request.user, approve=approve)
         except AlreadyDecidedError as exc:

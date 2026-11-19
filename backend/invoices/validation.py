@@ -25,9 +25,9 @@ def validate_invoice(invoice: Invoice) -> list[str]:
             Invoice.objects.filter(
                 extracted_invoice_no=invoice.extracted_invoice_no,
                 extracted_vendor_name=invoice.extracted_vendor_name,
-                status=Invoice.STATUS_VALIDATED,
             )
             .exclude(pk=invoice.pk)
+            .exclude(status__in=[Invoice.STATUS_REJECTED, Invoice.STATUS_NEEDS_REVIEW])
             .exists()
         )
         if is_duplicate:

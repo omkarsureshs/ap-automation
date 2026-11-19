@@ -59,3 +59,44 @@ def test_import_grns_csv_creates_valid_rows(db, vendor):
     assert result["created"] == 1
     assert result["errors"] == []
     assert GoodsReceiptNote.objects.filter(grn_number="GRN-6001").exists()
+
+
+def test_import_purchase_orders_csv_reports_error_for_missing_trailing_cell(db, vendor):
+    # A row with fewer commas than the header leaves the last column as None
+    # (csv.DictReader's behavior), not an empty string.
+    csv_content = "po_number,vendor_gstin,total_amount\nPO-7001,27AAACC1206D1ZG\n"
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 0
+    assert len(result["errors"]) == 1
+    assert not PurchaseOrder.objects.filter(po_number="PO-7001").exists()
+
+
+def test_import_purchase_orders_csv_handles_bom_prefixed_header(db, vendor):
+    csv_content = "﻿po_number,vendor_gstin,total_amount\nPO-8001,27AAACC1206D1ZG,1000.00\n"
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 1
+    assert result["errors"] == []
+    assert PurchaseOrder.objects.filter(po_number="PO-8001").exists()
+
+
+def test_import_purchase_orders_csv_rejects_blank_po_number(db, vendor):
+    csv_content = "po_number,vendor_gstin,total_amount\n,27AAACC1206D1ZG,1000.00\n"
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 0
+    assert len(result["errors"]) == 1
+
+
+def test_import_purchase_orders_csv_reports_error_for_nan_amount(db, vendor):
+    csv_content = "po_number,vendor_gstin,total_amount\nPO-9001,27AAACC1206D1ZG,NaN\n"
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 0
+    assert len(result["errors"]) == 1
+    assert not PurchaseOrder.objects.filter(po_number="PO-9001").exists()
+
+
+def test_import_purchase_orders_csv_reports_error_for_amount_too_large_for_field(db, vendor):
+    csv_content = "po_number,vendor_gstin,total_amount\nPO-9002,27AAACC1206D1ZG,1e20\n"
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 0
+    assert len(result["errors"]) == 1
+    assert not PurchaseOrder.objects.filter(po_number="PO-9002").exists()
