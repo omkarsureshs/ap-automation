@@ -2,6 +2,7 @@ from decimal import Decimal, InvalidOperation
 
 from invoices.gstin import is_valid_gstin
 from invoices.models import Invoice
+from vendors.models import Vendor
 
 MANDATORY_FIELDS = (
     "extracted_invoice_no",
@@ -34,6 +35,12 @@ def validate_invoice(invoice: Invoice) -> list[str]:
 
     if invoice.extracted_gstin and not is_valid_gstin(invoice.extracted_gstin):
         reasons.append("Invalid GSTIN checksum")
+    elif invoice.extracted_gstin:
+        vendor = Vendor.objects.filter(gstin=invoice.extracted_gstin).first()
+        if vendor is None:
+            reasons.append("Vendor not found in master")
+        elif not vendor.is_active:
+            reasons.append("Vendor is inactive")
 
     if invoice.extracted_total_amount:
         try:

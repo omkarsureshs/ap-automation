@@ -2,9 +2,11 @@ import pytest
 
 from invoices.models import Invoice
 from invoices.validation import validate_invoice
+from vendors.models import Vendor
 
 VALID_GSTIN = "27AAACC1206D1ZG"
 BAD_CHECKSUM_GSTIN = "27AAACC1206D1Z9"
+UNKNOWN_VENDOR_GSTIN = "29AABCU9603R1ZM"
 
 
 @pytest.fixture
@@ -27,8 +29,29 @@ def _make_invoice(uploader, **overrides):
 
 
 @pytest.fixture
-def clean_invoice(db, uploader):
+def active_vendor(db):
+    return Vendor.objects.create(
+        name="Acme Supplies", gstin=VALID_GSTIN, email="billing@acme.test",
+        bank_account_number="1234567890", bank_ifsc="HDFC0001234",
+    )
+
+
+@pytest.fixture
+def inactive_vendor(db):
+    return Vendor.objects.create(
+        name="Dormant Co", gstin=VALID_GSTIN, email="billing@dormant.test",
+        bank_account_number="1234567890", bank_ifsc="HDFC0001234", is_active=False,
+    )
+
+
+@pytest.fixture
+def clean_invoice(db, uploader, active_vendor):
     return _make_invoice(uploader, status=Invoice.STATUS_VALIDATED)
+
+
+@pytest.fixture
+def invoice_with_all_fields(db, uploader):
+    return _make_invoice(uploader)
 
 
 @pytest.fixture
@@ -73,3 +96,18 @@ def test_validate_invoice_flags_bad_gstin_checksum(invoice_with_bad_gstin_checks
 def test_validate_invoice_flags_malformed_amount(invoice_with_malformed_amount):
     reasons = validate_invoice(invoice_with_malformed_amount)
     assert any("amount" in r.lower() for r in reasons)
+
+
+def test_validate_invoice_flags_vendor_not_in_master(invoice_with_all_fields):
+    reasons = validate_invoice(invoice_with_all_fields)
+    assert any("vendor not found" in r.lower() for r in reasons)
+
+
+def test_validate_invoice_flags_inactive_vendor(invoice_with_all_fields, inactive_vendor):
+    reasons = validate_invoice(invoice_with_all_fields)
+    assert any("vendor is inactive" in r.lower() for r in reasons)
+
+
+def test_validate_invoice_passes_for_active_known_vendor(invoice_with_all_fields, active_vendor):
+    reasons = validate_invoice(invoice_with_all_fields)
+    assert not any("vendor" in r.lower() for r in reasons)
