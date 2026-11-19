@@ -17,6 +17,7 @@ export function ApprovalsPage() {
   const [steps, setSteps] = useState<ApprovalStep[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [decidingId, setDecidingId] = useState<number | null>(null)
+  const [decidingAction, setDecidingAction] = useState<'approve' | 'reject' | null>(null)
   const { show } = useToast()
 
   async function refresh() {
@@ -35,6 +36,7 @@ export function ApprovalsPage() {
   async function handleDecide(step: ApprovalStep, approve: boolean) {
     if (decidingId !== null) return
     setDecidingId(step.id)
+    setDecidingAction(approve ? 'approve' : 'reject')
     const previous = steps
     setSteps((steps ?? []).filter((s) => s.id !== step.id))
     try {
@@ -45,16 +47,22 @@ export function ApprovalsPage() {
         variant: 'success',
       })
     } catch (err) {
-      if (err instanceof ApiError && err.kind === 'conflict') {
-        // The step is no longer pending — leave it removed; someone else
-        // already decided it, so there is nothing left for this user to do.
-        show({ title: "Couldn't record your decision", description: err.message, variant: 'error' })
+      if (err instanceof ApiError && (err.kind === 'conflict' || err.kind === 'not_found')) {
+        // The step is no longer pending (someone else decided it) or no
+        // longer exists — leave it removed either way; there is nothing
+        // left for this user to do with it.
+        show({
+          title: "Couldn't record your decision",
+          description: 'Someone else already decided this invoice, or it no longer needs your review.',
+          variant: 'error',
+        })
       } else {
         setSteps(previous)
         show({ title: "Couldn't record your decision", description: errorMessageFor(err), variant: 'error' })
       }
     } finally {
       setDecidingId(null)
+      setDecidingAction(null)
     }
   }
 
@@ -62,7 +70,19 @@ export function ApprovalsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">My Approvals</h1>
 
-      {loadError && <Banner variant="error" title="Couldn't load approvals.">{loadError}</Banner>}
+      {loadError && (
+        <Banner
+          variant="error"
+          title="Couldn't load approvals."
+          action={
+            <Button type="button" onClick={refresh}>
+              Try again
+            </Button>
+          }
+        >
+          {loadError}
+        </Banner>
+      )}
 
       {!loadError && steps && steps.length === 0 && (
         <EmptyState title="That's everything for now">
@@ -91,7 +111,7 @@ export function ApprovalsPage() {
               <div className="flex gap-2">
                 <Button
                   type="button"
-                  loading={decidingId === step.id}
+                  loading={decidingId === step.id && decidingAction === 'approve'}
                   disabled={decidingId !== null && decidingId !== step.id}
                   onClick={() => handleDecide(step, true)}
                 >
@@ -99,6 +119,7 @@ export function ApprovalsPage() {
                 </Button>
                 <Button
                   type="button"
+                  loading={decidingId === step.id && decidingAction === 'reject'}
                   className="bg-exception-soft text-exception hover:opacity-80"
                   disabled={decidingId !== null}
                   onClick={() => handleDecide(step, false)}

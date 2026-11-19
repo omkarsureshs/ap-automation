@@ -51,9 +51,15 @@ export function NotificationBell() {
       >
         <Bell className="h-4 w-4" />
         {notifications.length > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-exception px-1 text-[10px] text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-exception px-1 text-[10px] text-background">
             {notifications.length}
           </span>
+        )}
+        {pollFailed && notifications.length === 0 && (
+          <span
+            aria-label="Couldn't check for new notifications"
+            className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-pending"
+          />
         )}
       </button>
       {open && (

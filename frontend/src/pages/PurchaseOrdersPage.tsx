@@ -26,9 +26,7 @@ function errorMessageFor(err: unknown): string {
 
 function ImportBanner({ result, kind }: { result: CsvImportResult; kind: 'PO' | 'GRN' }) {
   if (result.errors.length === 0) {
-    return (
-      <Banner variant="warning" className="bg-approved-soft text-approved" title={`${result.created} ${kind} row(s) created.`} />
-    )
+    return <Banner variant="success" title={`${result.created} ${kind} row(s) created.`} />
   }
   return (
     <Banner variant="error" title={`${result.created} created, ${result.errors.length} failed.`}>
@@ -76,7 +74,11 @@ export function PurchaseOrdersPage() {
     try {
       const result = await importPurchaseOrdersCsv(file)
       setPoResult(result)
-      show({ title: 'Purchase order import finished', description: `${result.created} created`, variant: 'success' })
+      if (result.created === 0 && result.errors.length > 0) {
+        show({ title: "No purchase orders imported", description: `${result.errors.length} row(s) failed`, variant: 'error' })
+      } else {
+        show({ title: 'Purchase order import finished', description: `${result.created} created`, variant: 'success' })
+      }
       await refresh()
     } catch (err) {
       show({ title: "Couldn't import purchase orders", description: errorMessageFor(err), variant: 'error' })
@@ -91,7 +93,11 @@ export function PurchaseOrdersPage() {
     try {
       const result = await importGrnsCsv(file)
       setGrnResult(result)
-      show({ title: 'GRN import finished', description: `${result.created} created`, variant: 'success' })
+      if (result.created === 0 && result.errors.length > 0) {
+        show({ title: 'No GRNs imported', description: `${result.errors.length} row(s) failed`, variant: 'error' })
+      } else {
+        show({ title: 'GRN import finished', description: `${result.created} created`, variant: 'success' })
+      }
       await refresh()
     } catch (err) {
       show({ title: "Couldn't import GRNs", description: errorMessageFor(err), variant: 'error' })
@@ -104,97 +110,115 @@ export function PurchaseOrdersPage() {
     <div className="flex flex-col gap-8">
       <h1 className="text-xl font-semibold">Purchase Orders &amp; GRNs</h1>
 
-      {loadError && <Banner variant="error" title="Couldn't load purchase orders.">{loadError}</Banner>}
+      {loadError && (
+        <Banner
+          variant="error"
+          title="Couldn't load purchase orders."
+          action={
+            <Button type="button" onClick={refresh}>
+              Try again
+            </Button>
+          }
+        >
+          {loadError}
+        </Banner>
+      )}
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Purchase Orders</h2>
-        <input
-          ref={poFileRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          disabled={importingPo}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handlePoImport(file)
-          }}
-        />
-        <Button type="button" loading={importingPo} onClick={() => poFileRef.current?.click()} className="self-start">
-          {importingPo ? 'Importing…' : 'Import PO CSV'}
-        </Button>
-        {poResult && <ImportBanner result={poResult} kind="PO" />}
-        {purchaseOrders && purchaseOrders.length === 0 ? (
-          <EmptyState title="No purchase orders yet">Import a CSV to get started.</EmptyState>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>PO Number</TableHeaderCell>
-                <TableHeaderCell>Vendor</TableHeaderCell>
-                <TableHeaderCell numeric>Total Amount</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {purchaseOrders === null ? (
-                <SkeletonRow columns={3} />
-              ) : (
-                purchaseOrders.map((po) => (
-                  <TableRow key={po.id}>
-                    <TableCell>{po.po_number}</TableCell>
-                    <TableCell>{po.vendor}</TableCell>
-                    <TableCell numeric>₹{po.total_amount}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+      {!loadError && (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="font-medium">Purchase Orders</h2>
+            <input
+              ref={poFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              disabled={importingPo}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handlePoImport(file)
+                e.target.value = ''
+              }}
+            />
+            <Button type="button" loading={importingPo} onClick={() => poFileRef.current?.click()} className="self-start">
+              Import PO CSV
+            </Button>
+            {poResult && <ImportBanner result={poResult} kind="PO" />}
+            {purchaseOrders && purchaseOrders.length === 0 ? (
+              <EmptyState title="No purchase orders yet">Import a CSV to get started.</EmptyState>
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableHeaderRow>
+                    <TableHeaderCell>PO Number</TableHeaderCell>
+                    <TableHeaderCell>Vendor</TableHeaderCell>
+                    <TableHeaderCell numeric>Total Amount</TableHeaderCell>
+                  </TableHeaderRow>
+                </TableHead>
+                <TableBody>
+                  {purchaseOrders === null ? (
+                    <SkeletonRow columns={3} />
+                  ) : (
+                    purchaseOrders.map((po) => (
+                      <TableRow key={po.id}>
+                        <TableCell>{po.po_number}</TableCell>
+                        <TableCell>{po.vendor}</TableCell>
+                        <TableCell numeric>₹{po.total_amount}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium">Goods Receipt Notes</h2>
-        <input
-          ref={grnFileRef}
-          type="file"
-          accept=".csv"
-          className="hidden"
-          disabled={importingGrn}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleGrnImport(file)
-          }}
-        />
-        <Button type="button" loading={importingGrn} onClick={() => grnFileRef.current?.click()} className="self-start">
-          {importingGrn ? 'Importing…' : 'Import GRN CSV'}
-        </Button>
-        {grnResult && <ImportBanner result={grnResult} kind="GRN" />}
-        {grns && grns.length === 0 ? (
-          <EmptyState title="No GRNs yet">Import a CSV to get started.</EmptyState>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableHeaderRow>
-                <TableHeaderCell>GRN Number</TableHeaderCell>
-                <TableHeaderCell>Purchase Order</TableHeaderCell>
-                <TableHeaderCell numeric>Received Amount</TableHeaderCell>
-              </TableHeaderRow>
-            </TableHead>
-            <TableBody>
-              {grns === null ? (
-                <SkeletonRow columns={3} />
-              ) : (
-                grns.map((grn) => (
-                  <TableRow key={grn.id}>
-                    <TableCell>{grn.grn_number}</TableCell>
-                    <TableCell>{grn.purchase_order}</TableCell>
-                    <TableCell numeric>₹{grn.received_amount}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+          <section className="flex flex-col gap-3">
+            <h2 className="font-medium">Goods Receipt Notes</h2>
+            <input
+              ref={grnFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              disabled={importingGrn}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleGrnImport(file)
+                e.target.value = ''
+              }}
+            />
+            <Button type="button" loading={importingGrn} onClick={() => grnFileRef.current?.click()} className="self-start">
+              Import GRN CSV
+            </Button>
+            {grnResult && <ImportBanner result={grnResult} kind="GRN" />}
+            {grns && grns.length === 0 ? (
+              <EmptyState title="No GRNs yet">Import a CSV to get started.</EmptyState>
+            ) : (
+              <Table>
+                <TableHead>
+                  <TableHeaderRow>
+                    <TableHeaderCell>GRN Number</TableHeaderCell>
+                    <TableHeaderCell>Purchase Order</TableHeaderCell>
+                    <TableHeaderCell numeric>Received Amount</TableHeaderCell>
+                  </TableHeaderRow>
+                </TableHead>
+                <TableBody>
+                  {grns === null ? (
+                    <SkeletonRow columns={3} />
+                  ) : (
+                    grns.map((grn) => (
+                      <TableRow key={grn.id}>
+                        <TableCell>{grn.grn_number}</TableCell>
+                        <TableCell>{grn.purchase_order}</TableCell>
+                        <TableCell numeric>₹{grn.received_amount}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </section>
+        </>
+      )}
     </div>
   )
 }

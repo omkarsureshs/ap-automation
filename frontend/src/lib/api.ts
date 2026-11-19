@@ -91,6 +91,9 @@ async function classifyAndThrow(resp: Response): Promise<never> {
     }
     throw new ApiError('validation', firstMessage ?? detail ?? 'Check the highlighted fields.', fieldErrors)
   }
+  if (resp.status >= 400 && resp.status < 500) {
+    throw new ApiError('validation', detail ?? "That request couldn't be processed. Check what you sent and try again.")
+  }
   throw new ApiError(
     'server',
     detail ?? "Something's wrong on our end. Try again shortly.",
@@ -130,9 +133,16 @@ async function authedFetch(path: string, options: RequestInit = {}): Promise<Res
   return resp
 }
 
+function redirectToLoginExpired(): void {
+  logout()
+  if (!window.location.pathname.startsWith('/login')) {
+    window.location.assign('/login?reason=expired')
+  }
+}
+
 async function handleJsonResponse<T>(resp: Response): Promise<T> {
   if (resp.status === 401) {
-    logout()
+    redirectToLoginExpired()
     throw new ApiError('unauthorized', 'Your session has expired. Log in again.')
   }
   if (!resp.ok) {

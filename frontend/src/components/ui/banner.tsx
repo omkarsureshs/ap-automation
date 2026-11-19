@@ -1,6 +1,18 @@
-import { AlertTriangle, OctagonAlert } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, OctagonAlert } from 'lucide-react'
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+
+const VARIANT_ICON = {
+  error: OctagonAlert,
+  warning: AlertTriangle,
+  success: CheckCircle2,
+}
+
+const VARIANT_CLASS = {
+  error: 'bg-exception-soft text-exception',
+  warning: 'bg-pending-soft text-pending',
+  success: 'bg-approved-soft text-approved',
+}
 
 export function Banner({
   variant,
@@ -9,18 +21,19 @@ export function Banner({
   className,
   children,
 }: {
-  variant: 'error' | 'warning'
+  variant: 'error' | 'warning' | 'success'
   title: string
   action?: React.ReactNode
   className?: string
   children?: React.ReactNode
 }) {
-  const Icon = variant === 'error' ? OctagonAlert : AlertTriangle
+  const Icon = VARIANT_ICON[variant]
   return (
     <div
+      role={variant === 'error' ? 'alert' : 'status'}
       className={cn(
         'mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md p-3.5 text-sm',
-        variant === 'error' ? 'bg-exception-soft text-exception' : 'bg-pending-soft text-pending',
+        VARIANT_CLASS[variant],
         className,
       )}
     >

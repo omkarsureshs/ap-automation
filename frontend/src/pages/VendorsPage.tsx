@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Banner } from '@/components/ui/banner'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
@@ -117,12 +118,22 @@ export function VendorsPage() {
           {fieldErrors.bank_ifsc && <span className="text-xs text-exception">{fieldErrors.bank_ifsc}</span>}
         </div>
         <Button type="submit" loading={submitting}>
-          {submitting ? 'Adding…' : 'Add vendor'}
+          Add vendor
         </Button>
       </form>
 
       {loadError ? (
-        <p className="text-sm text-exception">{loadError}</p>
+        <Banner
+          variant="error"
+          title="Couldn't load vendors."
+          action={
+            <Button type="button" onClick={refresh}>
+              Try again
+            </Button>
+          }
+        >
+          {loadError}
+        </Banner>
       ) : vendors && vendors.length === 0 ? (
         <EmptyState title="No vendors yet">
           Add your first vendor to start matching invoices against purchase orders.
