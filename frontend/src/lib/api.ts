@@ -191,3 +191,46 @@ export async function importGrnsCsv(file: File): Promise<CsvImportResult> {
   const resp = await authedFetch('/api/procurement/grns/import-csv/', { method: 'POST', body: formData })
   return handleJsonResponse(resp, 'CSV import failed')
 }
+
+export interface ApprovalStep {
+  id: number
+  invoice: number
+  rule: number
+  sequence_order: number
+  approver_role: string
+  status: string
+  assigned_at: string
+  decided_at: string | null
+  decided_by: number | null
+}
+
+export interface Notification {
+  id: number
+  message: string
+  is_read: boolean
+  created_at: string
+}
+
+export async function listMyApprovals(): Promise<ApprovalStep[]> {
+  const resp = await authedFetch('/api/workflow/approvals/?mine=true')
+  return handleJsonResponse(resp, 'Failed to list approvals')
+}
+
+export async function decideApprovalStep(id: number, approve: boolean): Promise<ApprovalStep> {
+  const resp = await authedFetch(`/api/workflow/approvals/${id}/decide/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ approve }),
+  })
+  return handleJsonResponse(resp, 'Failed to decide approval step')
+}
+
+export async function listNotifications(unreadOnly = false): Promise<Notification[]> {
+  const resp = await authedFetch(`/api/workflow/notifications/${unreadOnly ? '?unread=true' : ''}`)
+  return handleJsonResponse(resp, 'Failed to list notifications')
+}
+
+export async function markNotificationRead(id: number): Promise<Notification> {
+  const resp = await authedFetch(`/api/workflow/notifications/${id}/mark-read/`, { method: 'POST' })
+  return handleJsonResponse(resp, 'Failed to mark notification read')
+}

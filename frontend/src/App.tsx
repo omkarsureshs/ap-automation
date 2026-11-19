@@ -1,5 +1,7 @@
 import { Link, Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
+import { NotificationBell } from '@/components/NotificationBell'
 import { isLoggedIn } from '@/lib/api'
+import { ApprovalsPage } from '@/pages/ApprovalsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { PurchaseOrdersPage } from '@/pages/PurchaseOrdersPage'
 import { UploadPage } from '@/pages/UploadPage'
@@ -12,10 +14,14 @@ function RequireAuth({ children }: { children: React.ReactElement }) {
 function Nav() {
   if (!isLoggedIn()) return null
   return (
-    <nav className="mx-auto flex max-w-3xl gap-4 px-4 pt-6 text-sm text-muted-foreground">
+    <nav className="mx-auto flex max-w-3xl items-center gap-4 px-4 pt-6 text-sm text-muted-foreground">
       <Link to="/upload">Invoices</Link>
       <Link to="/vendors">Vendors</Link>
       <Link to="/purchase-orders">Purchase Orders</Link>
+      <Link to="/approvals">Approvals</Link>
+      <div className="ml-auto">
+        <NotificationBell />
+      </div>
     </nav>
   )
 }
@@ -47,6 +53,14 @@ export default function App() {
           element={
             <RequireAuth>
               <PurchaseOrdersPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/approvals"
+          element={
+            <RequireAuth>
+              <ApprovalsPage />
             </RequireAuth>
           }
         />
