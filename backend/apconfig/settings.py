@@ -113,5 +113,17 @@ FIELD_ENCRYPTION_KEY = os.environ.get(
     "FIELD_ENCRYPTION_KEY", "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
 )
 
+if os.environ.get("EMAIL_HOST"):
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = os.environ["EMAIL_HOST"]
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True") == "True"
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "ap-automation@example.com")
+
 TESSERACT_CMD = os.environ.get("TESSERACT_CMD", "")
 POPPLER_PATH = os.environ.get("POPPLER_PATH", "") or None

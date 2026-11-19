@@ -40,3 +40,13 @@ class ApprovalStep(models.Model):
 
     def __str__(self):
         return f"ApprovalStep(invoice={self.invoice_id}, role={self.approver_role}, status={self.status})"
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    message = models.CharField(max_length=500)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Notification(recipient={self.recipient_id}, read={self.is_read})"

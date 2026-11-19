@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from accounts.models import User
 from workflow.models import ApprovalStep
+from workflow.notifications import notify
 
 ESCALATION_TARGET_ROLE = User.ROLE_AP_ADMIN
 
@@ -32,8 +33,11 @@ class Command(BaseCommand):
                     approver_role=ESCALATION_TARGET_ROLE,
                 )
 
-            if not User.objects.filter(role=ESCALATION_TARGET_ROLE, is_active=True).exists():
+            admins = User.objects.filter(role=ESCALATION_TARGET_ROLE, is_active=True)
+            if not admins.exists():
                 print(
                     f"WARNING: no active {ESCALATION_TARGET_ROLE} user exists to receive escalated step {step.pk}",
                     file=sys.stderr,
                 )
+            for admin in admins:
+                notify(admin, f"Invoice #{step.invoice_id} approval step escalated to you")

@@ -1,9 +1,11 @@
 from decimal import Decimal
 
+from django.conf import settings
 from django.utils import timezone
 
 from invoices.models import Invoice
 from workflow.models import ApprovalRule, ApprovalStep
+from workflow.notifications import notify
 
 
 class AlreadyDecidedError(Exception):
@@ -11,6 +13,10 @@ class AlreadyDecidedError(Exception):
 
 
 def start_approval(invoice: Invoice) -> list[ApprovalStep]:
+    from django.apps import apps
+
+    User = apps.get_model(settings.AUTH_USER_MODEL)
+
     amount = Decimal(invoice.extracted_total_amount.replace(",", ""))
     rule = (
         ApprovalRule.objects.filter(is_active=True, min_amount__lte=amount, max_amount__gt=amount)
@@ -20,10 +26,16 @@ def start_approval(invoice: Invoice) -> list[ApprovalStep]:
     if rule is None:
         raise ValueError(f"No approval rule covers amount {amount}")
 
-    return [
+    steps = [
         ApprovalStep.objects.create(invoice=invoice, rule=rule, sequence_order=i, approver_role=role)
         for i, role in enumerate(rule.approver_roles)
     ]
+
+    for step in steps:
+        for approver in User.objects.filter(role=step.approver_role, is_active=True):
+            notify(approver, f"Invoice #{invoice.pk} is waiting for your approval")
+
+    return steps
 
 
 def decide_step(step: ApprovalStep, user, approve: bool) -> ApprovalStep:
