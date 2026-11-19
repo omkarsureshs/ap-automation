@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts",
     "invoices",
+    "vendors",
 ]
 
 MIDDLEWARE = [
@@ -105,6 +106,10 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
+
+FIELD_ENCRYPTION_KEY = os.environ.get(
+    "FIELD_ENCRYPTION_KEY", "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
+)
 
 TESSERACT_CMD = os.environ.get("TESSERACT_CMD", "")
 POPPLER_PATH = os.environ.get("POPPLER_PATH", "") or None
