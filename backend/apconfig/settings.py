@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "vendors",
     "procurement",
     "workflow",
+    "payments",
 ]
 
 MIDDLEWARE = [
@@ -112,6 +113,8 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
 FIELD_ENCRYPTION_KEY = os.environ.get(
     "FIELD_ENCRYPTION_KEY", "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
 )
+
+BANKING_GATEWAY = os.environ.get("BANKING_GATEWAY", "mock")
 
 if os.environ.get("EMAIL_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
