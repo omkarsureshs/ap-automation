@@ -19,18 +19,25 @@ class PaymentViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
     def get_permissions(self):
         if self.action == "create":
             return [HasRole("ap_admin")()]
-        return super().get_permissions()
+        return [HasRole("ap_admin", "approver")()]
 
     def create(self, request, *args, **kwargs):
         invoice_id = request.data.get("invoice")
-        invoice = Invoice.objects.filter(pk=invoice_id).first()
+        try:
+            invoice = Invoice.objects.filter(pk=invoice_id).first()
+        except (ValueError, TypeError):
+            return Response({"invoice": ["Invoice not found."]}, status=status.HTTP_400_BAD_REQUEST)
         if invoice is None:
             return Response({"invoice": ["Invoice not found."]}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             invoice = Invoice.objects.select_for_update().get(pk=invoice.pk)
 
-            if Payment.objects.filter(invoice=invoice).exists():
+            # A failed payment is not a final state — it never reached the
+            # bank successfully, so the invoice must still be payable.
+            # Only an in-flight or completed payment blocks a new request.
+            existing = Payment.objects.filter(invoice=invoice).first()
+            if existing is not None and existing.status != Payment.STATUS_FAILED:
                 return Response(
                     {"detail": "A payment has already been requested for this invoice."},
                     status=status.HTTP_409_CONFLICT,
@@ -48,6 +55,16 @@ class PaymentViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
                     {"invoice": ["Invoice does not have a valid amount — cannot request payment."]},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            if not amount.is_finite() or amount <= 0:
+                return Response(
+                    {"invoice": ["Invoice amount must be a positive number — cannot request payment."]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if existing is not None:
+                # Retrying after a failure — replace the failed row rather
+                # than leaving a stale one behind (invoice has a OneToOne).
+                existing.delete()
 
             result = get_gateway().initiate_payment(amount=amount, reference=f"INV-{invoice.pk}")
 

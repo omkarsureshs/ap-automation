@@ -116,7 +116,20 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "login": "100000/min" if "pytest" in sys.modules else os.environ.get("LOGIN_THROTTLE_RATE", "10/min"),
     },
+    # The deployed topology (docker-compose.prod.yml / nginx.conf) puts exactly one
+    # reverse proxy in front of Django. NUM_PROXIES=1 makes DRF's throttle identify
+    # the client by the IP nginx itself appended to X-Forwarded-For, not by whatever
+    # a client puts earlier in that header — without this, anyone can bypass the
+    # login throttle by sending a different X-Forwarded-For value on every request.
+    # Behind a different number of proxies, change this to match.
+    "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1")),
 }
+
+# DEFAULT_THROTTLE_RATES above is enforced per-process via Django's default
+# LocMemCache, which is NOT shared across gunicorn workers — with N workers the
+# effective login-attempt limit is N times the configured rate. Point CACHES at a
+# shared backend (e.g. Redis) in any multi-worker deployment; this is called out
+# again in docs/DEPLOYMENT.md.
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AP Automation API",
@@ -136,9 +149,13 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
 
-FIELD_ENCRYPTION_KEY = os.environ.get(
-    "FIELD_ENCRYPTION_KEY", "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
-)
+_INSECURE_DEV_ENCRYPTION_KEY = "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
+FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", _INSECURE_DEV_ENCRYPTION_KEY)
+if not DEBUG and FIELD_ENCRYPTION_KEY == _INSECURE_DEV_ENCRYPTION_KEY:
+    raise ImproperlyConfigured(
+        "Set FIELD_ENCRYPTION_KEY to a real Fernet key when DJANGO_DEBUG is not True "
+        "(vendor bank details would otherwise be encrypted with a key published in this repo)."
+    )
 
 BANKING_GATEWAY = os.environ.get("BANKING_GATEWAY", "mock")
 

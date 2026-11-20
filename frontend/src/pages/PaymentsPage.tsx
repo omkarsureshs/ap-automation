@@ -21,6 +21,11 @@ function invoiceLabel(inv: Invoice | undefined, id: number): string {
   return inv?.extracted_invoice_no || (inv ? inv.file.split('/').pop() : null) || `Invoice #${id}`
 }
 
+function errorMessageFor(err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  return 'Something went wrong. Try again.'
+}
+
 function paymentError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.kind === 'conflict') return 'A payment was already requested for this invoice.'
@@ -31,31 +36,40 @@ function paymentError(err: unknown): string {
 }
 
 export function PaymentsPage() {
+  // "Ready to pay" and "Payment history" are fetched and error-handled
+  // independently: only ap_admin can see the invoice list, but both
+  // ap_admin and approver can see payment history, and the latter
+  // shouldn't be hidden just because the former 403s for that role.
   const [invoices, setInvoices] = useState<Invoice[] | null>(null)
+  const [invoicesError, setInvoicesError] = useState<string | null>(null)
   const [payments, setPayments] = useState<Payment[] | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
+  const [paymentsError, setPaymentsError] = useState<string | null>(null)
   const [payingId, setPayingId] = useState<number | null>(null)
   const inFlight = useRef(false)
   const { show } = useToast()
 
-  async function refresh() {
+  async function refreshInvoices() {
     try {
-      const [inv, pay] = await Promise.all([listInvoices(), listPayments()])
-      setInvoices(inv)
-      setPayments(pay)
-      setLoadError(null)
+      setInvoices(await listInvoices())
+      setInvoicesError(null)
     } catch (err) {
-      setLoadError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.')
+      setInvoicesError(errorMessageFor(err))
+    }
+  }
+
+  async function refreshPayments() {
+    try {
+      setPayments(await listPayments())
+      setPaymentsError(null)
+    } catch (err) {
+      setPaymentsError(errorMessageFor(err))
     }
   }
 
   useEffect(() => {
-    Promise.all([listInvoices(), listPayments()])
-      .then(([inv, pay]) => {
-        setInvoices(inv)
-        setPayments(pay)
-      })
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.'))
+    refreshInvoices()
+    refreshPayments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handlePay(inv: Invoice) {
@@ -78,35 +92,33 @@ export function PaymentsPage() {
     } finally {
       inFlight.current = false
       setPayingId(null)
-      await refresh()
+      await Promise.all([refreshInvoices(), refreshPayments()])
     }
   }
 
   const ready = invoices?.filter((i) => i.status === 'approved') ?? []
   const byId = new Map((invoices ?? []).map((i) => [i.id, i]))
-  const loading = invoices === null || payments === null
+  const invoicesLoading = invoices === null && !invoicesError
 
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-xl font-semibold">Payments</h1>
 
-      {loadError && (
-        <Banner
-          variant="error"
-          title="Couldn't load payments."
-          action={
-            <Button type="button" onClick={refresh}>
-              Try again
-            </Button>
-          }
-        >
-          {loadError}
-        </Banner>
-      )}
-
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">Ready to pay</h2>
-        {!loadError && !loading && ready.length === 0 ? (
+        {invoicesError ? (
+          <Banner
+            variant="error"
+            title="Couldn't load invoices ready for payment."
+            action={
+              <Button type="button" onClick={refreshInvoices}>
+                Try again
+              </Button>
+            }
+          >
+            {invoicesError}
+          </Banner>
+        ) : !invoicesLoading && ready.length === 0 ? (
           <EmptyState title="Nothing to pay right now">Approved invoices appear here, ready for payment.</EmptyState>
         ) : (
           <Table>
@@ -121,7 +133,7 @@ export function PaymentsPage() {
               </TableHeaderRow>
             </TableHead>
             <TableBody>
-              {loading && !loadError && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={4} />)}
+              {invoicesLoading && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={4} />)}
               {ready.map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell>{invoiceLabel(inv, inv.id)}</TableCell>
@@ -146,7 +158,19 @@ export function PaymentsPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold">Payment history</h2>
-        {!loadError && !loading && payments.length === 0 ? (
+        {paymentsError ? (
+          <Banner
+            variant="error"
+            title="Couldn't load payment history."
+            action={
+              <Button type="button" onClick={refreshPayments}>
+                Try again
+              </Button>
+            }
+          >
+            {paymentsError}
+          </Banner>
+        ) : payments !== null && payments.length === 0 ? (
           <EmptyState title="No payments yet">Requested payments and their bank status show up here.</EmptyState>
         ) : (
           <Table className="min-w-[640px]">
@@ -160,7 +184,7 @@ export function PaymentsPage() {
               </TableHeaderRow>
             </TableHead>
             <TableBody>
-              {loading && !loadError && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={5} />)}
+              {payments === null && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={5} />)}
               {payments?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>{invoiceLabel(byId.get(p.invoice), p.invoice)}</TableCell>

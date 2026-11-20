@@ -2,14 +2,17 @@
 
 > **Not verified on this machine.** Docker was unavailable on the development machine, so `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.prod.yml` and `.github/workflows/ci.yml` were written but never built, run or tested. Expect to fix small things on first build. Everything below is a plan, not a report of something that worked.
 
-## Fix these before deploying (code-level gaps found while writing this)
+## Fix these before deploying (status as of the last review pass)
 
-1. **Static files.** `settings.py` has no `STATIC_ROOT` and no WhiteNoise middleware, though `whitenoise` is in requirements. Without them `collectstatic` fails (the Dockerfile tolerates that) and the Django admin and API docs pages will have no CSS in production. Add `STATIC_ROOT = BASE_DIR / "staticfiles"` and `whitenoise.middleware.WhiteNoiseMiddleware` right after `SecurityMiddleware`.
-2. **Media files are not served by Django.** `urls.py` does not route `/media/`. The nginx config proxies `/media/` to Django, so either add a media route or serve the volume directly from nginx.
-3. **`CSRF_TRUSTED_ORIGINS` is not read by settings** (only needed for Django admin logins over HTTPS). Add it before using the admin behind a domain.
-4. **Django admin is not mounted** in `apconfig/urls.py`. Approval rules are model data; unless `seed_demo` creates them you need some way to edit them (mount `admin/`, or use `manage.py shell`).
-5. **Insecure defaults.** Secret key, encryption key and `DJANGO_DEBUG=True` default to development values. Always set all three explicitly.
+Items 1, 3 and 4 below were real gaps when this doc was first written; they are now fixed in code. The rest are still open.
+
+1. ~~Static files~~ — **fixed.** `STATIC_ROOT` and `whitenoise.middleware.WhiteNoiseMiddleware` are both in `settings.py` now.
+2. ~~Media files only served in `DEBUG` mode~~ — **fixed for Path B (docker-compose).** `urls.py` only routes `/media/` through Django itself `if settings.DEBUG`, so nginx can no longer proxy to Django for that path in production. Instead, `docker-compose.prod.yml` mounts the same `media_data` named volume the backend writes into onto the frontend container, and `nginx.conf`'s `/media/` location serves those files directly (`alias`, read-only). **Path A (Render, single service) still needs real object storage** — there's no second container to share a Docker volume with, and Render's own disk doesn't survive a redeploy either way. Switch to S3-compatible storage via `django-storages` before using Path A for anything beyond a demo.
+3. ~~`CSRF_TRUSTED_ORIGINS`~~ — **fixed.** Read from the `CSRF_TRUSTED_ORIGINS` env var (comma-separated).
+4. ~~Django admin not mounted~~ — **fixed.** `/admin/` is mounted in `apconfig/urls.py`. **New gap this uncovered:** `frontend/nginx.conf` only proxies `/api/` and `/media/` to the backend — `/admin/` and `/static/` (WhiteNoise's own static files, including the admin's CSS) fall through to the SPA's `index.html` and never reach Django. Add `location /admin/ { proxy_pass http://backend:8000; }` and `location /static/ { proxy_pass http://backend:8000; }` (same proxy settings as the existing `/api/` block) before relying on the admin in the docker-compose path.
+5. **Insecure defaults, now enforced for the secret key and the encryption key.** `DJANGO_SECRET_KEY` and `FIELD_ENCRYPTION_KEY` both raise `ImproperlyConfigured` at startup if left at their development defaults while `DJANGO_DEBUG` is not `True` — you cannot accidentally deploy with either one unset. `DJANGO_DEBUG` itself has no such guard: it simply defaults to `True`, so you must explicitly set `DJANGO_DEBUG=False` yourself; nothing will stop you from forgetting.
 6. **Escalation needs a scheduler** (cron) calling `manage.py escalate_pending_approvals`; nothing runs it automatically.
+7. **Login throttling is per-process and trusts exactly one proxy hop.** `REST_FRAMEWORK["NUM_PROXIES"]` is set to `1` to match the nginx topology below — if you put a CDN or a second proxy in front of nginx, increase it, or the throttle becomes bypassable by spoofing `X-Forwarded-For` again. Separately, the rate limit uses Django's default `LocMemCache`, which is **not shared across gunicorn workers** — with `N` workers the real limit is `N ×` the configured rate. Point `CACHES` at a shared backend (Redis, or at minimum Django's database cache via `createcachetable`) before running more than one worker in production.
 
 ## Environment variables
 

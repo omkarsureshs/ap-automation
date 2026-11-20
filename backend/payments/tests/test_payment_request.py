@@ -1,6 +1,7 @@
 import pytest
 
 from invoices.models import Invoice
+from payments.gateways import PaymentResult
 from payments.models import Payment
 
 
@@ -67,3 +68,44 @@ def test_ap_admin_can_list_payments(auth_client_ap_admin, approved_invoice):
     resp = auth_client_ap_admin.get("/api/payments/")
     assert resp.status_code == 200
     assert len(resp.json()) == 1
+
+
+def test_approver_can_list_but_not_request_payment(auth_client_approver, approved_invoice):
+    assert auth_client_approver.get("/api/payments/").status_code == 200
+    assert auth_client_approver.post("/api/payments/", {"invoice": approved_invoice.id}).status_code == 403
+
+
+def test_a_failed_payment_can_be_retried(auth_client_ap_admin, approved_invoice, monkeypatch):
+    monkeypatch.setattr(
+        "payments.views.get_gateway",
+        lambda: type("FailingGateway", (), {
+            "initiate_payment": lambda self, amount, reference: PaymentResult(
+                status="failed", gateway_reference="MOCK-FAIL", failure_reason="Simulated bank rejection"
+            )
+        })(),
+    )
+    first = auth_client_ap_admin.post("/api/payments/", {"invoice": approved_invoice.id})
+    assert first.status_code == 201
+    assert first.json()["status"] == "failed"
+    approved_invoice.refresh_from_db()
+    assert approved_invoice.status == Invoice.STATUS_APPROVED  # unchanged — payment never completed
+
+    monkeypatch.undo()  # restore the real (always-succeeds) mock gateway
+    second = auth_client_ap_admin.post("/api/payments/", {"invoice": approved_invoice.id})
+    assert second.status_code == 201
+    assert second.json()["status"] == "completed"
+    assert Payment.objects.filter(invoice=approved_invoice).count() == 1  # old failed row replaced, not stacked
+
+
+def test_request_payment_with_non_numeric_invoice_id_returns_400(auth_client_ap_admin):
+    resp = auth_client_ap_admin.post("/api/payments/", {"invoice": "not-an-id"})
+    assert resp.status_code == 400
+
+
+def test_request_payment_rejects_non_positive_amount(auth_client_ap_admin, uploader):
+    invoice = _invoice(uploader, Invoice.STATUS_APPROVED)
+    invoice.extracted_total_amount = "0.00"
+    invoice.save()
+    resp = auth_client_ap_admin.post("/api/payments/", {"invoice": invoice.id})
+    assert resp.status_code == 400
+    assert not Payment.objects.filter(invoice=invoice).exists()

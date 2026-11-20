@@ -39,6 +39,11 @@ services:
       - backend
     ports:
       - "80:80"
+    volumes:
+      # Same named volume the backend writes uploaded invoices into — nginx
+      # serves it directly as static files instead of proxying to Django,
+      # which only serves /media/ itself when DEBUG=True.
+      - media_data:/usr/share/nginx/html/media:ro
 
 volumes:
   postgres_data:

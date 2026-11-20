@@ -140,11 +140,15 @@ export function DashboardPage() {
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Tile label="Pending approvals" value={String(data.pending_approvals)} />
-          <Tile label="Avg. turnaround" value={formatTurnaround(data.avg_turnaround_hours)} note="Upload to final decision" />
           <Tile
-            label="OCR accuracy"
+            label="Avg. turnaround"
+            value={formatTurnaround(data.avg_turnaround_hours)}
+            note="Upload to approval, rejection, or payment"
+          />
+          <Tile
+            label="Straight-through rate"
             value={formatPercent(data.ocr_accuracy_percent)}
-            note="Invoices that passed validation with no exceptions"
+            note="Invoices that reached a validated state with zero exceptions, out of all invoices OCR has finished reading"
           />
           <Tile label="Total paid" value={formatRupees(pay.total_paid_amount)} />
         </div>
