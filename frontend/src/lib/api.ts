@@ -15,6 +15,9 @@ export interface Invoice {
   purchase_order: number | null
   created_at: string
   exceptions: InvoiceException[]
+  extracted_vendor_name?: string | null
+  extracted_invoice_no?: string | null
+  extracted_total_amount?: string | null
 }
 
 export type ApiErrorKind =
@@ -310,4 +313,71 @@ export async function listNotifications(unreadOnly = false): Promise<Notificatio
 export async function markNotificationRead(id: number): Promise<Notification> {
   const resp = await authedFetch(`/api/workflow/notifications/${id}/mark-read/`, { method: 'POST' })
   return handleJsonResponse(resp)
+}
+
+export type PaymentStatus = 'processing' | 'completed' | 'failed'
+
+export interface Payment {
+  id: number
+  invoice: number
+  amount: string
+  status: PaymentStatus
+  gateway_reference: string
+  failure_reason: string
+  requested_by: number | null
+  requested_at: string
+  completed_at: string | null
+}
+
+export async function listPayments(): Promise<Payment[]> {
+  const resp = await authedFetch('/api/payments/')
+  return handleJsonResponse(resp)
+}
+
+export async function requestPayment(invoiceId: number): Promise<Payment> {
+  const resp = await authedFetch('/api/payments/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invoice: invoiceId }),
+  })
+  return handleJsonResponse(resp)
+}
+
+export interface DashboardSummary {
+  invoice_aging: { bucket: string; count: number; total_amount: string }[]
+  pending_approvals: number
+  avg_turnaround_hours: number | null
+  ocr_accuracy_percent: number | null
+  vendor_analytics: { vendor_name: string; invoice_count: number; total_amount: string }[]
+  payment_tracking: { processing: number; completed: number; failed: number; total_paid_amount: string }
+}
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const resp = await authedFetch('/api/dashboard/summary/')
+  return handleJsonResponse(resp)
+}
+
+export type ReportKind = 'ap-aging' | 'invoice-status' | 'exceptions' | 'audit-log' | 'gst-tax'
+export type ReportRow = Record<string, string | number | null>
+
+export async function getReport(kind: ReportKind): Promise<ReportRow[]> {
+  const resp = await authedFetch(`/api/dashboard/reports/${kind}/`)
+  return handleJsonResponse(resp)
+}
+
+export async function downloadReportCsv(kind: ReportKind): Promise<void> {
+  const resp = await authedFetch(`/api/dashboard/reports/${kind}/?format=csv`)
+  if (resp.status === 401) {
+    redirectToLoginExpired()
+    throw new ApiError('unauthorized', 'Your session has expired. Log in again.')
+  }
+  if (!resp.ok) await classifyAndThrow(resp)
+  const url = URL.createObjectURL(await resp.blob())
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${kind}-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
 }

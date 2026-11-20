@@ -1,12 +1,19 @@
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-secret-key")
-
 DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+
+# Dev default is >=32 bytes so the JWT HMAC key (derived from SECRET_KEY) is not "too short".
+_INSECURE_DEV_KEY = "dev-insecure-secret-key-not-for-production-use-0123456789"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", _INSECURE_DEV_KEY)
+if not DEBUG and SECRET_KEY == _INSECURE_DEV_KEY:
+    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY to a strong random value when DJANGO_DEBUG is not True.")
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
@@ -20,16 +27,19 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
+    "drf_spectacular",
     "accounts",
     "invoices",
     "vendors",
     "procurement",
     "workflow",
     "payments",
+    "dashboard",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -85,6 +95,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -98,12 +109,27 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Only views that opt in with ScopedRateThrottle (the login view) are throttled.
+    # The test suite logs in dozens of times from one IP, so under pytest the limit is
+    # effectively disabled; the throttle test patches it back down explicitly.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "100000/min" if "pytest" in sys.modules else os.environ.get("LOGIN_THROTTLE_RATE", "10/min"),
+    },
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AP Automation API",
+    "DESCRIPTION": "Accounts-payable automation: invoices, approvals, payments, dashboards and reports.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "USER_ID_FIELD": "id",
+    "SIGNING_KEY": SECRET_KEY,
 }
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
@@ -130,3 +156,20 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "ap-automation@example
 
 TESSERACT_CMD = os.environ.get("TESSERACT_CMD", "")
 POPPLER_PATH = os.environ.get("POPPLER_PATH", "") or None
+
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"std": {"format": "%(asctime)s %(levelname)s %(name)s: %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "std"}},
+    "root": {"handlers": ["console"], "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO")},
+}

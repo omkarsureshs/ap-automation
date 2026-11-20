@@ -1,11 +1,17 @@
 import { Navigate, NavLink, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
+import { AppFooter } from '@/components/AppFooter'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { Logo } from '@/components/Logo'
 import { NotificationBell } from '@/components/NotificationBell'
 import { ToastProvider } from '@/components/ui/toast'
 import { isLoggedIn } from '@/lib/api'
 import { ApprovalsPage } from '@/pages/ApprovalsPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
+import { PaymentsPage } from '@/pages/PaymentsPage'
 import { PurchaseOrdersPage } from '@/pages/PurchaseOrdersPage'
+import { ReportsPage } from '@/pages/ReportsPage'
 import { UploadPage } from '@/pages/UploadPage'
 import { VendorsPage } from '@/pages/VendorsPage'
 
@@ -19,7 +25,10 @@ const NAV_LINK_CLASS =
 function Nav() {
   if (!isLoggedIn()) return null
   return (
-    <nav className="mb-5 flex flex-wrap items-center gap-5 border-b border-hairline pb-3.5">
+    <nav className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-hairline pb-3.5">
+      <NavLink to="/dashboard" className={NAV_LINK_CLASS}>
+        Overview
+      </NavLink>
       <NavLink to="/upload" className={NAV_LINK_CLASS}>
         Invoices
       </NavLink>
@@ -31,6 +40,12 @@ function Nav() {
       </NavLink>
       <NavLink to="/approvals" className={NAV_LINK_CLASS}>
         Approvals
+      </NavLink>
+      <NavLink to="/payments" className={NAV_LINK_CLASS}>
+        Payments
+      </NavLink>
+      <NavLink to="/reports" className={NAV_LINK_CLASS}>
+        Reports
       </NavLink>
       <div className="ml-auto">
         <NotificationBell />
@@ -44,11 +59,12 @@ export default function App() {
     <ErrorBoundary>
       <ToastProvider>
         <Router>
-          <div className="mx-auto min-h-screen max-w-[1040px] border-l-[3px] border-ledger py-7 pl-5 pr-4">
-            <div className="mb-5 flex items-baseline gap-2">
-              <span className="text-[17px] font-bold tracking-tight">AP Automation</span>
+          <div className="mx-auto flex min-h-screen max-w-[1040px] flex-col border-l-[3px] border-ledger py-7 pl-5 pr-4">
+            <div className="mb-5">
+              <Logo withWordmark />
             </div>
             <Nav />
+            <main className="flex-1">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route
@@ -83,8 +99,35 @@ export default function App() {
                   </RequireAuth>
                 }
               />
-              <Route path="*" element={<Navigate to={isLoggedIn() ? '/upload' : '/login'} replace />} />
+              <Route path="/" element={<Navigate to={isLoggedIn() ? '/dashboard' : '/login'} replace />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <RequireAuth>
+                    <DashboardPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/payments"
+                element={
+                  <RequireAuth>
+                    <PaymentsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <RequireAuth>
+                    <ReportsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </main>
+            <AppFooter />
           </div>
         </Router>
       </ToastProvider>

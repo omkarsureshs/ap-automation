@@ -12,6 +12,11 @@ const STATUS_TONE: Record<string, StatusTone> = {
   pending_approval: 'pending',
   approved: 'approved',
   rejected: 'exception',
+  paid: 'approved',
+  // Payment.status
+  processing: 'pending',
+  completed: 'approved',
+  failed: 'exception',
   // Invoice.match_status
   unmatched: 'neutral',
   matched: 'approved',
