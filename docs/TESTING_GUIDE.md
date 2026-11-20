@@ -61,7 +61,8 @@ What each role may do (enforced by the server):
 | View vendors, POs | yes | yes | yes | yes |
 | Create/edit vendors, POs, GRNs, CSV import | no | no | yes | no |
 | See and decide approval steps | only steps for own role (none unless a rule names requester) | yes | yes (including escalated steps) | no |
-| Request payment | no | no | yes | no |
+| View dashboard, reports, payment history | no | yes | yes | no |
+| Request a new payment | no | no | yes | no |
 | See bank account numbers in full | no (masked) | no (masked) | yes | no (masked) |
 
 **Steps**
@@ -245,28 +246,36 @@ python manage.py shell -c "from workflow.models import ApprovalStep as S; from d
 2. Click request again for the same invoice (or call the API twice).
 3. Try requesting payment for a non-approved invoice (use curl: `curl -s -X POST http://localhost:8000/api/payments/ -H "Authorization: Bearer ADMIN_ACCESS" -H "Content-Type: application/json" -d '{"invoice": INVOICE_ID}'`).
 4. As requester, try to request a payment.
+5. As `approver@demo.com`, open `/payments`.
 
 **Expected**
 1. A payment with a `MOCK-...` reference and status Completed; the invoice becomes **Paid**.
 2. Refused with HTTP 409: "A payment has already been requested for this invoice."
 3. HTTP 400: "Invoice must be approved before payment can be requested (current status: ...)."
 4. HTTP 403.
+5. The "Ready to pay" section shows a no-access message (approvers can't request payments or see the invoice list), but "Payment history" below it loads normally — one section's error never hides the other.
 
-## 15. Dashboard, including empty state
+## 15. Dashboard, including empty state and role access
 
 **Steps**
-1. As any role, open `/dashboard` with seeded data.
-2. On a fresh, empty database (new DB, `migrate` only, create an admin with `createsuperuser`), open `/dashboard`.
+1. As `admin@demo.com` or `approver@demo.com`, open `/dashboard` with seeded data.
+2. As `requester@demo.com` or `vendor@demo.com`, open `/dashboard`.
+3. On a fresh, empty database (new DB, `migrate` only, create an admin with `createsuperuser`), open `/dashboard` as admin.
 
 **Expected**
-1. Stat blocks and charts show numbers that agree with the invoice register (counts by status, pending approvals, aging, vendor analytics, payment tracking).
-2. No error and no "NaN": averages show a dash/"no data" placeholders and charts show an empty state.
+1. Stat blocks and charts show numbers that agree with the invoice register (counts by status, pending approvals, aging, vendor analytics, payment tracking). The straight-through-rate tile is labelled that way, not "OCR accuracy" — its tooltip explains the denominator (every invoice OCR has finished reading, not just ones that failed OCR specifically).
+2. HTTP 403 / an access-denied message — the dashboard and reports expose vendor GSTINs, approver decisions and payment history, more than these two roles can otherwise see, so it is intentionally restricted to AP Admin and Approver.
+3. No error and no "NaN": averages show a dash/"no data" placeholders and charts show an empty state.
 
 ## 16. Reports and CSV download
 
-**Steps:** open `/reports`. For each of the five tabs (AP aging, Invoice status, Exceptions, Audit log, GST/tax): view the table, click Export CSV, open the file.
+**Steps**
+1. As `admin@demo.com` or `approver@demo.com`, open `/reports`. For each of the five tabs (AP aging, Invoice status, Exceptions, Audit log, GST/tax): view the table, click Export CSV, open the file.
+2. As `requester@demo.com`, open `/reports`.
 
-**Expected:** each tab shows a table; the CSV has a header row and the same rows as shown; an empty report downloads a header-only file, not an error.
+**Expected**
+1. Each tab shows a table; the CSV has a header row and the same rows as shown; an empty report downloads a header-only file, not an error. Open a downloaded CSV in a spreadsheet app and confirm a cell that happens to start with `=`, `+`, `-` or `@` (rare in practice, but possible in an OCR'd vendor name) displays as plain text rather than running as a formula.
+2. HTTP 403, same reasoning as dashboard access above.
 
 ## 17. Custom 404 page
 
