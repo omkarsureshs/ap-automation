@@ -55,6 +55,18 @@ function getAccessToken(): string | null {
   return localStorage.getItem('access')
 }
 
+/** A JWT whose `exp` has passed is as good as absent — without this,
+ * isLoggedIn() would say "logged in" from a stale token alone (e.g. the
+ * nav bar showing up on the login screen after a long-expired session). */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()
+  } catch {
+    return true
+  }
+}
+
 function getRefreshToken(): string | null {
   return localStorage.getItem('refresh')
 }
@@ -206,7 +218,14 @@ export async function login(email: string, password: string): Promise<void> {
 }
 
 export function isLoggedIn(): boolean {
-  return getAccessToken() !== null
+  const access = getAccessToken()
+  if (access === null) return false
+  if (!isTokenExpired(access)) return true
+  // Access token expired, but a still-valid refresh token means the next
+  // API call silently refreshes it (authedFetch already does this) — so
+  // the session is still good, just due for a refresh.
+  const refresh = getRefreshToken()
+  return refresh !== null && !isTokenExpired(refresh)
 }
 
 export function getCurrentUser(): CurrentUser | null {

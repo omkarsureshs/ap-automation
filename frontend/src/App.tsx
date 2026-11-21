@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, NavLink, Route, BrowserRouter as Router, Routes, useNavigate } from 'react-router-dom'
+import { Navigate, NavLink, Route, BrowserRouter as Router, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AppFooter } from '@/components/AppFooter'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { Logo } from '@/components/Logo'
@@ -79,7 +79,8 @@ const NAV_LINKS: { to: string; label: string; roles: string[] | null }[] = [
 ]
 
 function Nav() {
-  if (!isLoggedIn()) return null
+  const location = useLocation()
+  if (location.pathname === '/login' || !isLoggedIn()) return null
   const role = getCurrentUser()?.role
   const links = NAV_LINKS.filter((link) => link.roles === null || !role || link.roles.includes(role))
   return (
