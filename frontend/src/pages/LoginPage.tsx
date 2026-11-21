@@ -23,9 +23,15 @@ const STAT_TILES = [
   { label: 'Paid this month', value: '₹1.94L' },
 ]
 
+const TRUST_POINTS = [
+  'Role-based access for requesters, approvers, AP admins and vendors',
+  'Every approval, rejection and payment is logged — never edited',
+  "Vendor bank details are encrypted at rest and masked for anyone but AP admins",
+]
+
 function RegisterPreview() {
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-md border border-hairline bg-card">
+    <div className="w-full overflow-x-auto rounded-md border border-hairline bg-card">
       <table className="w-full border-collapse text-left text-[13px]">
         <thead>
           <tr className="border-b border-hairline text-muted-foreground">
@@ -54,7 +60,7 @@ function RegisterPreview() {
 
 function StatTiles() {
   return (
-    <div className="grid w-full max-w-sm grid-cols-3 gap-2.5">
+    <div className="grid grid-cols-3 gap-2.5">
       {STAT_TILES.map((tile) => (
         <div key={tile.label} className="rounded-md border border-hairline bg-card p-3">
           <div className="text-[11px] font-semibold leading-tight text-muted-foreground">{tile.label}</div>
@@ -67,7 +73,7 @@ function StatTiles() {
 
 function ApprovalPreview() {
   return (
-    <div className="flex w-full max-w-sm items-center justify-between gap-3 rounded-md border border-hairline bg-card p-3">
+    <div className="flex flex-col gap-2.5 rounded-md border border-hairline bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="text-sm font-medium">DEMO-INV-007 — Acme</div>
         <div className="tabular text-xs text-muted-foreground">₹91,000 · waiting on Approver</div>
@@ -80,9 +86,22 @@ function ApprovalPreview() {
   )
 }
 
+function TrustList() {
+  return (
+    <ul className="flex flex-col gap-2.5 border-t border-hairline pt-5 text-xs text-muted-foreground">
+      {TRUST_POINTS.map((point) => (
+        <li key={point} className="flex items-start gap-2">
+          <span aria-hidden="true" className="mt-[5px] h-[6px] w-[6px] flex-none rounded-full bg-approved" />
+          <span>{point}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function BrandPanel() {
   return (
-    <aside className="relative flex flex-col justify-center gap-7 overflow-hidden border-b border-hairline bg-secondary px-6 py-10 sm:px-12 lg:border-b-0 lg:border-r lg:px-16">
+    <div className="relative flex flex-col gap-6 overflow-hidden border-b border-hairline bg-secondary px-6 py-10 sm:px-10 lg:border-b-0 lg:border-r">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
@@ -96,20 +115,20 @@ function BrandPanel() {
         <Logo size={260} />
       </div>
 
-      <div className="relative flex flex-col gap-7">
-        <Logo size={36} withWordmark />
-        <p className="max-w-md text-2xl font-semibold leading-snug tracking-tight">
+      <div className="relative flex flex-col gap-6">
+        <Logo size={32} withWordmark />
+        <p className="text-xl font-semibold leading-snug tracking-tight">
           Capture invoices, match them to purchase orders, route approvals, and pay — with every
           exception explained.
         </p>
-        <div className="hidden flex-col gap-3 sm:flex" aria-hidden="true">
+        <div className="flex flex-col gap-3" aria-hidden="true">
           <StatTiles />
           <RegisterPreview />
           <ApprovalPreview />
-          <p className="text-sm text-muted-foreground">Live previews from your own invoice register.</p>
         </div>
+        <p className="text-sm text-muted-foreground">Live previews from your own invoice register.</p>
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -154,10 +173,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
-      <BrandPanel />
-      <main className="flex items-center justify-center px-6 py-10 sm:px-12">
-        <div className="flex w-full max-w-sm flex-col gap-6 rounded-md border border-hairline bg-card p-7">
+    <div className="flex min-h-screen items-center justify-center bg-secondary/60 p-4 sm:p-8">
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-md border border-hairline bg-card lg:grid-cols-2">
+        <BrandPanel />
+        <main className="flex flex-col justify-center gap-6 px-6 py-10 sm:px-10">
           <div>
             <h1 className="text-xl font-semibold">Sign in</h1>
             <p className="mt-1 text-sm text-muted-foreground">Use your work email to open the register.</p>
@@ -227,8 +246,9 @@ export function LoginPage() {
           <p className="text-xs text-muted-foreground">
             New here? Ask your AP Admin to create an account for you.
           </p>
-        </div>
-      </main>
+          <TrustList />
+        </main>
+      </div>
     </div>
   )
 }
