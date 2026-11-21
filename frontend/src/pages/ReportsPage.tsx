@@ -4,17 +4,18 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonRow } from '@/components/ui/skeleton'
 import {
+  SortableHeaderCell,
   Table,
   TableBody,
   TableCell,
   TableHead,
-  TableHeaderCell,
   TableHeaderRow,
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
 import { ApiError, downloadReportCsv, getReport, type ReportKind, type ReportRow } from '@/lib/api'
 import { formatDateTime, formatRupees } from '@/lib/format'
+import { compareValues, type SortDirection } from '@/lib/sort'
 
 type ColType = 'text' | 'money' | 'number' | 'date'
 interface Col {
@@ -94,10 +95,21 @@ export function ReportsPage() {
   const [active, setActive] = useState(0)
   const [state, setState] = useState<Partial<Record<ReportKind, TabState>>>({})
   const [exporting, setExporting] = useState(false)
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const requested = useRef(new Set<ReportKind>())
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const { show } = useToast()
   const tab = TABS[active]
+
+  function toggleSort(key: string) {
+    if (sortKey === key) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDirection('asc')
+    }
+  }
 
   async function load(kind: ReportKind) {
     requested.current.add(kind)
@@ -115,6 +127,11 @@ export function ReportsPage() {
 
   useEffect(() => {
     if (!requested.current.has(tab.kind)) load(tab.kind)
+  }, [tab.kind])
+
+  useEffect(() => {
+    setSortKey(null)
+    setSortDirection('asc')
   }, [tab.kind])
 
   function onKeyDown(e: React.KeyboardEvent, i: number) {
@@ -201,23 +218,36 @@ export function ReportsPage() {
             <TableHead>
               <TableHeaderRow>
                 {tab.cols.map((c) => (
-                  <TableHeaderCell key={c.key} numeric={c.type === 'money' || c.type === 'number'}>
+                  <SortableHeaderCell
+                    key={c.key}
+                    numeric={c.type === 'money' || c.type === 'number'}
+                    active={sortKey === c.key}
+                    direction={sortDirection}
+                    onSort={() => toggleSort(c.key)}
+                  >
                     {c.label}
-                  </TableHeaderCell>
+                  </SortableHeaderCell>
                 ))}
               </TableHeaderRow>
             </TableHead>
             <TableBody>
               {!s?.rows && [0, 1, 2, 3].map((i) => <SkeletonRow key={i} columns={tab.cols.length} />)}
-              {s?.rows?.map((row, i) => (
-                <TableRow key={i}>
-                  {tab.cols.map((c) => (
-                    <TableCell key={c.key} numeric={c.type === 'money' || c.type === 'number'}>
-                      {cell(row[c.key], c.type)}
-                    </TableCell>
+              {s?.rows &&
+                [...s.rows]
+                  .sort((a, b) => {
+                    if (!sortKey) return 0
+                    const cmp = compareValues(a[sortKey], b[sortKey])
+                    return sortDirection === 'asc' ? cmp : -cmp
+                  })
+                  .map((row, i) => (
+                    <TableRow key={i}>
+                      {tab.cols.map((c) => (
+                        <TableCell key={c.key} numeric={c.type === 'money' || c.type === 'number'}>
+                          {cell(row[c.key], c.type)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
                   ))}
-                </TableRow>
-              ))}
             </TableBody>
           </Table>
         )}

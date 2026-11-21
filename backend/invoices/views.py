@@ -71,6 +71,28 @@ class InvoiceUploadView(generics.ListCreateAPIView):
         invoice.save()
 
 
+_DELETABLE_STATUSES = (Invoice.STATUS_UPLOADED, Invoice.STATUS_EXTRACTED, Invoice.STATUS_NEEDS_REVIEW)
+
+
+class InvoiceDeleteView(generics.DestroyAPIView):
+    """AP Admin withdraws a mistakenly uploaded invoice.
+
+    Only before it has entered the approval chain: once validated/approved/
+    paid it's a financial record, not a draft, so deletion is blocked (use
+    the audit trail / reject flow instead, same as a real AP system).
+    """
+
+    queryset = Invoice.objects.all()
+    permission_classes = [HasRole("ap_admin")]
+
+    def perform_destroy(self, instance):
+        if instance.status not in _DELETABLE_STATUSES:
+            raise ValidationError(
+                {"detail": f"Only invoices not yet validated can be deleted (current status: {instance.status})."}
+            )
+        instance.delete()
+
+
 class InvoiceCorrectionView(generics.UpdateAPIView):
     """AP Admin fixes a field OCR misread (e.g. a garbled date) and re-validates.
 

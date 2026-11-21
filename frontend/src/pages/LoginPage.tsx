@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ApiError, login } from '@/lib/api'
+import { ApiError, getCurrentUser, login } from '@/lib/api'
+import { landingPageFor } from '@/lib/nav'
 
 const DEMO_PASSWORD = 'Demo@12345'
 const DEMO_EMAILS = ['requester@demo.com', 'approver@demo.com', 'admin@demo.com', 'vendor@demo.com']
@@ -74,7 +75,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login(email, password)
-      navigate('/dashboard')
+      navigate(landingPageFor(getCurrentUser()?.role))
     } catch (err) {
       setError(errorMessageFor(err))
       setInvalidCredentials(err instanceof ApiError && err.kind === 'unauthorized')

@@ -34,3 +34,17 @@ def test_has_role_permission_rejects_wrong_role(client, django_user_model):
     login = client.post("/api/auth/login/", {"email": "v@x.com", "password": "pw12345!"}).json()
     resp = client.get("/api/invoices/", HTTP_AUTHORIZATION=f"Bearer {login['access']}")
     assert resp.status_code == 403
+
+
+def test_me_returns_the_logged_in_users_email_and_role(client, django_user_model):
+    django_user_model.objects.create_user(email="m@x.com", password="pw12345!", role="approver")
+    login = client.post("/api/auth/login/", {"email": "m@x.com", "password": "pw12345!"}).json()
+    resp = client.get("/api/auth/me/", HTTP_AUTHORIZATION=f"Bearer {login['access']}")
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "m@x.com"
+    assert resp.json()["role"] == "approver"
+
+
+def test_me_requires_authentication(client):
+    resp = client.get("/api/auth/me/")
+    assert resp.status_code == 401

@@ -41,3 +41,31 @@ def test_ap_admin_can_create_vendor(auth_client_ap_admin):
     })
     assert resp.status_code == 201
     assert Vendor.objects.filter(gstin="29AABCU9603R1ZM").exists()
+
+
+def test_ap_admin_can_deactivate_vendor(auth_client_ap_admin, vendor):
+    resp = auth_client_ap_admin.patch(f"/api/vendors/{vendor.id}/", {"is_active": False}, format="json")
+    assert resp.status_code == 200
+    vendor.refresh_from_db()
+    assert vendor.is_active is False
+
+
+def test_ap_admin_can_delete_vendor_with_no_purchase_orders(auth_client_ap_admin, vendor):
+    resp = auth_client_ap_admin.delete(f"/api/vendors/{vendor.id}/")
+    assert resp.status_code == 204
+    assert not Vendor.objects.filter(id=vendor.id).exists()
+
+
+def test_deleting_vendor_with_purchase_orders_is_refused(auth_client_ap_admin, vendor):
+    from procurement.models import PurchaseOrder
+
+    PurchaseOrder.objects.create(po_number="PO-DEL-1", vendor=vendor, total_amount="100.00")
+    resp = auth_client_ap_admin.delete(f"/api/vendors/{vendor.id}/")
+    assert resp.status_code == 400
+    assert Vendor.objects.filter(id=vendor.id).exists()
+
+
+def test_requester_cannot_delete_vendor(auth_client_requester, vendor):
+    resp = auth_client_requester.delete(f"/api/vendors/{vendor.id}/")
+    assert resp.status_code == 403
+    assert Vendor.objects.filter(id=vendor.id).exists()

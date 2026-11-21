@@ -164,6 +164,28 @@ async function handleJsonResponse<T>(resp: Response): Promise<T> {
   return resp.json()
 }
 
+async function handleNoContentResponse(resp: Response): Promise<void> {
+  if (resp.status === 401) {
+    redirectToLoginExpired()
+    throw new ApiError('unauthorized', 'Your session has expired. Log in again.')
+  }
+  if (!resp.ok) {
+    await classifyAndThrow(resp)
+  }
+}
+
+export interface CurrentUser {
+  id: number
+  email: string
+  role: string
+}
+
+export const AUTH_CHANGE_EVENT = 'ap-auth-changed'
+
+function notifyAuthChange(): void {
+  window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
+}
+
 export async function login(email: string, password: string): Promise<void> {
   const resp = await safeFetch(`${API_BASE}/api/auth/login/`, {
     method: 'POST',
@@ -174,15 +196,34 @@ export async function login(email: string, password: string): Promise<void> {
   const data = await resp.json()
   localStorage.setItem('access', data.access)
   localStorage.setItem('refresh', data.refresh)
+
+  const meResp = await authedFetch('/api/auth/me/')
+  if (meResp.ok) {
+    const me: CurrentUser = await meResp.json()
+    localStorage.setItem('user', JSON.stringify(me))
+  }
+  notifyAuthChange()
 }
 
 export function isLoggedIn(): boolean {
   return getAccessToken() !== null
 }
 
+export function getCurrentUser(): CurrentUser | null {
+  const raw = localStorage.getItem('user')
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as CurrentUser
+  } catch {
+    return null
+  }
+}
+
 export function logout(): void {
   localStorage.removeItem('access')
   localStorage.removeItem('refresh')
+  localStorage.removeItem('user')
+  notifyAuthChange()
 }
 
 export async function listInvoices(): Promise<Invoice[]> {
@@ -204,6 +245,11 @@ export async function correctInvoice(id: number, fields: InvoiceCorrection): Pro
     body: JSON.stringify(fields),
   })
   return handleJsonResponse(resp)
+}
+
+export async function deleteInvoice(id: number): Promise<void> {
+  const resp = await authedFetch(`/api/invoices/${id}/`, { method: 'DELETE' })
+  return handleNoContentResponse(resp)
 }
 
 export interface Vendor {
@@ -258,9 +304,28 @@ export async function createVendor(data: {
   return handleJsonResponse(resp)
 }
 
+export async function updateVendor(id: number, data: Partial<{ is_active: boolean }>): Promise<Vendor> {
+  const resp = await authedFetch(`/api/vendors/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleJsonResponse(resp)
+}
+
+export async function deleteVendor(id: number): Promise<void> {
+  const resp = await authedFetch(`/api/vendors/${id}/`, { method: 'DELETE' })
+  return handleNoContentResponse(resp)
+}
+
 export async function listPurchaseOrders(): Promise<PurchaseOrder[]> {
   const resp = await authedFetch('/api/procurement/purchase-orders/')
   return handleJsonResponse(resp)
+}
+
+export async function deletePurchaseOrder(id: number): Promise<void> {
+  const resp = await authedFetch(`/api/procurement/purchase-orders/${id}/`, { method: 'DELETE' })
+  return handleNoContentResponse(resp)
 }
 
 export async function importPurchaseOrdersCsv(file: File): Promise<CsvImportResult> {
@@ -273,6 +338,11 @@ export async function importPurchaseOrdersCsv(file: File): Promise<CsvImportResu
 export async function listGrns(): Promise<GoodsReceiptNote[]> {
   const resp = await authedFetch('/api/procurement/grns/')
   return handleJsonResponse(resp)
+}
+
+export async function deleteGrn(id: number): Promise<void> {
+  const resp = await authedFetch(`/api/procurement/grns/${id}/`, { method: 'DELETE' })
+  return handleNoContentResponse(resp)
 }
 
 export async function importGrnsCsv(file: File): Promise<CsvImportResult> {

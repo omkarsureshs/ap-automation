@@ -5,9 +5,21 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { SkeletonRow } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableHeaderRow, TableRow } from '@/components/ui/table'
+import {
+  SortableHeaderCell,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableHeaderRow,
+  TableRow,
+} from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { ApiError, correctInvoice, listInvoices, uploadInvoice, type Invoice } from '@/lib/api'
+import { ApiError, correctInvoice, deleteInvoice, getCurrentUser, listInvoices, uploadInvoice, type Invoice } from '@/lib/api'
+import { useSort } from '@/lib/sort'
+
+const DELETABLE_STATUSES = new Set(['uploaded', 'extracted', 'needs_review'])
 
 function loadErrorMessageFor(err: unknown): string {
   if (err instanceof ApiError) {
@@ -116,8 +128,11 @@ export function UploadPage() {
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [busyId, setBusyId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { show } = useToast()
+  const isAdmin = getCurrentUser()?.role === 'ap_admin'
+  const { sorted, sortKey, sortDirection, toggleSort } = useSort<Invoice, keyof Invoice>(invoices, 'created_at')
 
   async function refresh() {
     try {
@@ -151,6 +166,21 @@ export function UploadPage() {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
+  }
+
+  async function handleDelete(invoice: Invoice) {
+    const name = invoice.file.split('/').pop()
+    if (!window.confirm(`Delete invoice "${name}"? This can't be undone.`)) return
+    setBusyId(invoice.id)
+    try {
+      await deleteInvoice(invoice.id)
+      show({ title: 'Invoice deleted', description: name, variant: 'success' })
+      await refresh()
+    } catch (err) {
+      show({ title: "Couldn't delete invoice", description: uploadErrorMessageFor(err), variant: 'error' })
+    } finally {
+      setBusyId(null)
+    }
   }
 
   const invoicesNeedingReview = invoices?.filter((inv) => inv.exceptions.length > 0) ?? []
@@ -209,20 +239,35 @@ export function UploadPage() {
               <TableHead>
                 <TableHeaderRow>
                   <TableHeaderCell>File</TableHeaderCell>
-                  <TableHeaderCell>Status</TableHeaderCell>
-                  <TableHeaderCell>Match</TableHeaderCell>
-                  <TableHeaderCell>Uploaded</TableHeaderCell>
+                  <SortableHeaderCell active={sortKey === 'status'} direction={sortDirection} onSort={() => toggleSort('status')}>
+                    Status
+                  </SortableHeaderCell>
+                  <SortableHeaderCell
+                    active={sortKey === 'match_status'}
+                    direction={sortDirection}
+                    onSort={() => toggleSort('match_status')}
+                  >
+                    Match
+                  </SortableHeaderCell>
+                  <SortableHeaderCell
+                    active={sortKey === 'created_at'}
+                    direction={sortDirection}
+                    onSort={() => toggleSort('created_at')}
+                  >
+                    Uploaded
+                  </SortableHeaderCell>
+                  {isAdmin && <TableHeaderCell>Actions</TableHeaderCell>}
                 </TableHeaderRow>
               </TableHead>
               <TableBody>
                 {invoices === null ? (
                   <>
-                    <SkeletonRow columns={4} />
-                    <SkeletonRow columns={4} />
-                    <SkeletonRow columns={4} />
+                    <SkeletonRow columns={isAdmin ? 5 : 4} />
+                    <SkeletonRow columns={isAdmin ? 5 : 4} />
+                    <SkeletonRow columns={isAdmin ? 5 : 4} />
                   </>
                 ) : (
-                  invoices.map((invoice) => (
+                  sorted?.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell>{invoice.file.split('/').pop()}</TableCell>
                       <TableCell>
@@ -234,7 +279,7 @@ export function UploadPage() {
                             ))}
                           </ul>
                         )}
-                        {invoice.status === 'needs_review' && (
+                        {isAdmin && invoice.status === 'needs_review' && (
                           <div className="mt-1">
                             {editingId === invoice.id ? (
                               <CorrectionForm
@@ -263,6 +308,22 @@ export function UploadPage() {
                       <TableCell className="text-muted-foreground">
                         {new Date(invoice.created_at).toLocaleString()}
                       </TableCell>
+                      {isAdmin && (
+                        <TableCell>
+                          {DELETABLE_STATUSES.has(invoice.status) ? (
+                            <button
+                              type="button"
+                              disabled={busyId === invoice.id}
+                              onClick={() => handleDelete(invoice)}
+                              className="text-xs font-medium text-exception underline underline-offset-2 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

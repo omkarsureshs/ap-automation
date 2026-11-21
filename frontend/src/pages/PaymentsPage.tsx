@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonRow } from '@/components/ui/skeleton'
 import {
+  SortableHeaderCell,
   Table,
   TableBody,
   TableCell,
@@ -16,6 +17,7 @@ import {
 import { useToast } from '@/components/ui/toast'
 import { ApiError, listInvoices, listPayments, requestPayment, type Invoice, type Payment } from '@/lib/api'
 import { formatDateTime, formatRupees } from '@/lib/format'
+import { useSort } from '@/lib/sort'
 
 function invoiceLabel(inv: Invoice | undefined, id: number): string {
   return inv?.extracted_invoice_no || (inv ? inv.file.split('/').pop() : null) || `Invoice #${id}`
@@ -99,6 +101,8 @@ export function PaymentsPage() {
   const ready = invoices?.filter((i) => i.status === 'approved') ?? []
   const byId = new Map((invoices ?? []).map((i) => [i.id, i]))
   const invoicesLoading = invoices === null && !invoicesError
+  const readySort = useSort<Invoice, keyof Invoice>(ready, null)
+  const paymentsSort = useSort<Payment, keyof Payment>(payments, 'completed_at')
 
   return (
     <div className="flex flex-col gap-8">
@@ -125,8 +129,21 @@ export function PaymentsPage() {
             <TableHead>
               <TableHeaderRow>
                 <TableHeaderCell>Invoice</TableHeaderCell>
-                <TableHeaderCell>Vendor</TableHeaderCell>
-                <TableHeaderCell numeric>Amount</TableHeaderCell>
+                <SortableHeaderCell
+                  active={readySort.sortKey === 'extracted_vendor_name'}
+                  direction={readySort.sortDirection}
+                  onSort={() => readySort.toggleSort('extracted_vendor_name')}
+                >
+                  Vendor
+                </SortableHeaderCell>
+                <SortableHeaderCell
+                  numeric
+                  active={readySort.sortKey === 'extracted_total_amount'}
+                  direction={readySort.sortDirection}
+                  onSort={() => readySort.toggleSort('extracted_total_amount')}
+                >
+                  Amount
+                </SortableHeaderCell>
                 <TableHeaderCell className="text-right">
                   <span className="sr-only">Action</span>
                 </TableHeaderCell>
@@ -134,7 +151,7 @@ export function PaymentsPage() {
             </TableHead>
             <TableBody>
               {invoicesLoading && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={4} />)}
-              {ready.map((inv) => (
+              {readySort.sorted?.map((inv) => (
                 <TableRow key={inv.id}>
                   <TableCell>{invoiceLabel(inv, inv.id)}</TableCell>
                   <TableCell>{inv.extracted_vendor_name || '—'}</TableCell>
@@ -177,15 +194,34 @@ export function PaymentsPage() {
             <TableHead>
               <TableHeaderRow>
                 <TableHeaderCell>Invoice</TableHeaderCell>
-                <TableHeaderCell numeric>Amount</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
+                <SortableHeaderCell
+                  numeric
+                  active={paymentsSort.sortKey === 'amount'}
+                  direction={paymentsSort.sortDirection}
+                  onSort={() => paymentsSort.toggleSort('amount')}
+                >
+                  Amount
+                </SortableHeaderCell>
+                <SortableHeaderCell
+                  active={paymentsSort.sortKey === 'status'}
+                  direction={paymentsSort.sortDirection}
+                  onSort={() => paymentsSort.toggleSort('status')}
+                >
+                  Status
+                </SortableHeaderCell>
                 <TableHeaderCell>Gateway reference</TableHeaderCell>
-                <TableHeaderCell>Completed</TableHeaderCell>
+                <SortableHeaderCell
+                  active={paymentsSort.sortKey === 'completed_at'}
+                  direction={paymentsSort.sortDirection}
+                  onSort={() => paymentsSort.toggleSort('completed_at')}
+                >
+                  Completed
+                </SortableHeaderCell>
               </TableHeaderRow>
             </TableHead>
             <TableBody>
               {payments === null && [0, 1, 2].map((i) => <SkeletonRow key={i} columns={5} />)}
-              {payments?.map((p) => (
+              {paymentsSort.sorted?.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>{invoiceLabel(byId.get(p.invoice), p.invoice)}</TableCell>
                   <TableCell numeric>{formatRupees(p.amount)}</TableCell>
