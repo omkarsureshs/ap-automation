@@ -17,9 +17,15 @@ const PREVIEW_ROWS = [
   { no: 'INV-2052', vendor: 'Acme', amount: '31,200', status: 'paid' },
 ]
 
+const STAT_TILES = [
+  { label: 'Pending approvals', value: '3' },
+  { label: 'Straight-through rate', value: '61%' },
+  { label: 'Paid this month', value: '₹1.94L' },
+]
+
 function RegisterPreview() {
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-md border border-hairline bg-card" aria-hidden="true">
+    <div className="w-full max-w-sm overflow-hidden rounded-md border border-hairline bg-card">
       <table className="w-full border-collapse text-left text-[13px]">
         <thead>
           <tr className="border-b border-hairline text-muted-foreground">
@@ -43,6 +49,67 @@ function RegisterPreview() {
         </tbody>
       </table>
     </div>
+  )
+}
+
+function StatTiles() {
+  return (
+    <div className="grid w-full max-w-sm grid-cols-3 gap-2.5">
+      {STAT_TILES.map((tile) => (
+        <div key={tile.label} className="rounded-md border border-hairline bg-card p-3">
+          <div className="text-[11px] font-semibold leading-tight text-muted-foreground">{tile.label}</div>
+          <div className="tabular mt-1 text-lg font-semibold">{tile.value}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ApprovalPreview() {
+  return (
+    <div className="flex w-full max-w-sm items-center justify-between gap-3 rounded-md border border-hairline bg-card p-3">
+      <div>
+        <div className="text-sm font-medium">DEMO-INV-007 — Acme</div>
+        <div className="tabular text-xs text-muted-foreground">₹91,000 · waiting on Approver</div>
+      </div>
+      <div className="flex shrink-0 gap-1.5">
+        <span className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground">Approve</span>
+        <span className="rounded-md bg-exception-soft px-2.5 py-1 text-xs font-medium text-exception">Reject</span>
+      </div>
+    </div>
+  )
+}
+
+function BrandPanel() {
+  return (
+    <aside className="relative flex flex-col justify-center gap-7 overflow-hidden border-b border-hairline bg-secondary px-6 py-10 sm:px-12 lg:border-b-0 lg:border-r lg:px-16">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            'repeating-linear-gradient(to bottom, var(--hairline) 0, var(--hairline) 1px, transparent 1px, transparent 32px)',
+          opacity: 0.4,
+        }}
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-14 -right-14 hidden opacity-[0.07] sm:block">
+        <Logo size={260} />
+      </div>
+
+      <div className="relative flex flex-col gap-7">
+        <Logo size={36} withWordmark />
+        <p className="max-w-md text-2xl font-semibold leading-snug tracking-tight">
+          Capture invoices, match them to purchase orders, route approvals, and pay — with every
+          exception explained.
+        </p>
+        <div className="hidden flex-col gap-3 sm:flex" aria-hidden="true">
+          <StatTiles />
+          <RegisterPreview />
+          <ApprovalPreview />
+          <p className="text-sm text-muted-foreground">Live previews from your own invoice register.</p>
+        </div>
+      </div>
+    </aside>
   )
 }
 
@@ -88,20 +155,13 @@ export function LoginPage() {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <aside className="flex flex-col justify-center gap-8 border-b border-hairline bg-secondary px-6 py-10 sm:px-12 lg:border-b-0 lg:border-r lg:px-16">
-        <Logo size={36} withWordmark />
-        <p className="max-w-md text-2xl font-semibold leading-snug tracking-tight">
-          Capture invoices, match them to purchase orders, route approvals, and pay — with every
-          exception explained.
-        </p>
-        <div className="hidden flex-col gap-2 sm:flex">
-          <RegisterPreview />
-          <p className="text-sm text-muted-foreground">A live look at the invoice register.</p>
-        </div>
-      </aside>
+      <BrandPanel />
       <main className="flex items-center justify-center px-6 py-10 sm:px-12">
-        <div className="flex w-full max-w-sm flex-col gap-5">
-          <h1 className="text-xl font-semibold">Sign in</h1>
+        <div className="flex w-full max-w-sm flex-col gap-6 rounded-md border border-hairline bg-card p-7">
+          <div>
+            <h1 className="text-xl font-semibold">Sign in</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Use your work email to open the register.</p>
+          </div>
           {expired && !error && (
             <p className="text-sm text-pending" role="status">
               Your session has expired. Sign in again.
@@ -137,7 +197,7 @@ export function LoginPage() {
               Sign in
             </Button>
           </form>
-          <details className="rounded-md border border-hairline bg-card text-sm">
+          <details className="rounded-md border border-hairline bg-background text-sm">
             <summary className="cursor-pointer rounded-md px-3 py-2 font-medium focus-visible:outline-2 focus-visible:outline-ring">
               Demo accounts
             </summary>
@@ -164,6 +224,9 @@ export function LoginPage() {
               </ul>
             </div>
           </details>
+          <p className="text-xs text-muted-foreground">
+            New here? Ask your AP Admin to create an account for you.
+          </p>
         </div>
       </main>
     </div>
