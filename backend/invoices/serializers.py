@@ -50,3 +50,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data["uploaded_by"] = self.context["request"].user
         return super().create(validated_data)
+
+
+class InvoiceCorrectionSerializer(serializers.ModelSerializer):
+    """Lets an AP Admin fix fields OCR misread, then re-run validation/matching."""
+
+    class Meta:
+        model = Invoice
+        fields = [
+            "extracted_invoice_no", "extracted_invoice_date", "extracted_gstin",
+            "extracted_total_amount", "extracted_vendor_name",
+        ]

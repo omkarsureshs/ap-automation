@@ -17,7 +17,17 @@ export interface Invoice {
   exceptions: InvoiceException[]
   extracted_vendor_name?: string | null
   extracted_invoice_no?: string | null
+  extracted_invoice_date?: string | null
+  extracted_gstin?: string | null
   extracted_total_amount?: string | null
+}
+
+export interface InvoiceCorrection {
+  extracted_invoice_no?: string
+  extracted_invoice_date?: string
+  extracted_gstin?: string
+  extracted_total_amount?: string
+  extracted_vendor_name?: string
 }
 
 export type ApiErrorKind =
@@ -184,6 +194,15 @@ export async function uploadInvoice(file: File): Promise<Invoice> {
   const formData = new FormData()
   formData.append('file', file)
   const resp = await authedFetch('/api/invoices/', { method: 'POST', body: formData })
+  return handleJsonResponse(resp)
+}
+
+export async function correctInvoice(id: number, fields: InvoiceCorrection): Promise<Invoice> {
+  const resp = await authedFetch(`/api/invoices/${id}/correct/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
   return handleJsonResponse(resp)
 }
 
