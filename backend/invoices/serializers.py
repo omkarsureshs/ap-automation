@@ -25,8 +25,14 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = [
             "id", "file", "source", "status", "uploaded_by", "raw_ocr_text", "created_at",
             "exceptions", "purchase_order", "match_status",
+            "extracted_invoice_no", "extracted_invoice_date", "extracted_gstin",
+            "extracted_total_amount", "extracted_vendor_name",
         ]
-        read_only_fields = ["status", "uploaded_by", "raw_ocr_text", "created_at", "match_status"]
+        read_only_fields = [
+            "status", "uploaded_by", "raw_ocr_text", "created_at", "match_status",
+            "extracted_invoice_no", "extracted_invoice_date", "extracted_gstin",
+            "extracted_total_amount", "extracted_vendor_name",
+        ]
         extra_kwargs = {"purchase_order": {"required": False}}
 
     def validate_file(self, value):
