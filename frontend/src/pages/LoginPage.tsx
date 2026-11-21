@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '@/components/Logo'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError, getCurrentUser, login } from '@/lib/api'
@@ -8,39 +9,40 @@ import { landingPageFor } from '@/lib/nav'
 
 const DEMO_PASSWORD = 'Demo@12345'
 const DEMO_EMAILS = ['requester@demo.com', 'approver@demo.com', 'admin@demo.com', 'vendor@demo.com']
-const STEPS = ['Capture', 'Validate', 'Match', 'Approve', 'Pay']
 
-function PipelineFlow() {
+const PREVIEW_ROWS = [
+  { no: 'INV-2049', vendor: 'Acme', amount: '18,400', status: 'validated' },
+  { no: 'INV-2050', vendor: 'Globex', amount: '52,900', status: 'needs_review' },
+  { no: 'INV-2051', vendor: 'Initech', amount: '9,750', status: 'approved' },
+  { no: 'INV-2052', vendor: 'Acme', amount: '31,200', status: 'paid' },
+]
+
+function RegisterPreview() {
   return (
-    <svg
-      viewBox="0 0 500 64"
-      className="h-auto w-full max-w-md text-ledger"
-      role="img"
-      aria-label="Pipeline: Capture, Validate, Match, Approve, Pay"
-      fill="none"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-    >
-      {STEPS.map((label, i) => {
-        const cx = 25 + i * 112.5
-        return (
-          <g key={label}>
-            {i > 0 && <path d={`M${cx - 112.5 + 12} 20H${cx - 12}`} stroke="currentColor" opacity="0.45" />}
-            <circle cx={cx} cy="20" r="11" stroke="currentColor" className="fill-card" />
-            {i === STEPS.length - 1 ? (
-              <path d={`m${cx - 4} 20 3 3 5-6`} stroke="currentColor" strokeLinejoin="round" />
-            ) : (
-              <text x={cx} y="24" textAnchor="middle" fontSize="11" fontWeight="600" fill="currentColor" stroke="none">
-                {i + 1}
-              </text>
-            )}
-            <text x={cx} y="54" textAnchor="middle" fontSize="12" fontWeight="500" className="fill-foreground" stroke="none">
-              {label}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+    <div className="w-full max-w-sm overflow-hidden rounded-md border border-hairline bg-card" aria-hidden="true">
+      <table className="w-full border-collapse text-left text-[13px]">
+        <thead>
+          <tr className="border-b border-hairline text-muted-foreground">
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">Invoice</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">Vendor</th>
+            <th className="whitespace-nowrap px-2.5 py-2 text-right font-medium">Amount</th>
+            <th className="whitespace-nowrap px-2.5 py-2 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PREVIEW_ROWS.map((row) => (
+            <tr key={row.no} className="border-b border-hairline last:border-0">
+              <td className="whitespace-nowrap px-2.5 py-2.5 text-foreground">{row.no}</td>
+              <td className="whitespace-nowrap px-2.5 py-2.5 text-muted-foreground">{row.vendor}</td>
+              <td className="tabular whitespace-nowrap px-2.5 py-2.5 text-right text-foreground">₹{row.amount}</td>
+              <td className="whitespace-nowrap px-2.5 py-2.5">
+                <Badge status={row.status} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -92,8 +94,9 @@ export function LoginPage() {
           Capture invoices, match them to purchase orders, route approvals, and pay — with every
           exception explained.
         </p>
-        <div className="hidden sm:block">
-          <PipelineFlow />
+        <div className="hidden flex-col gap-2 sm:flex">
+          <RegisterPreview />
+          <p className="text-sm text-muted-foreground">A live look at the invoice register.</p>
         </div>
       </aside>
       <main className="flex items-center justify-center px-6 py-10 sm:px-12">
