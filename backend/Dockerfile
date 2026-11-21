@@ -25,4 +25,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Migrate on every start (idempotent), then serve. OCR is synchronous, so keep a long timeout.
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
