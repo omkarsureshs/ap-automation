@@ -9,6 +9,7 @@ from accounts.permissions import HasRole
 from invoices.models import Invoice
 from payments.gateways import get_gateway
 from payments.models import Payment
+from payments.notifications import send_payment_advice
 from payments.serializers import PaymentSerializer
 
 
@@ -81,5 +82,8 @@ class PaymentViewSet(mixins.CreateModelMixin, mixins.ListModelMixin, viewsets.Ge
             if result.status == Payment.STATUS_COMPLETED:
                 invoice.status = Invoice.STATUS_PAID
                 invoice.save()
+
+        if payment.status == Payment.STATUS_COMPLETED:
+            send_payment_advice(payment)
 
         return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)

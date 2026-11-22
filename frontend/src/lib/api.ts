@@ -6,6 +6,14 @@ export interface InvoiceException {
   created_at: string
 }
 
+export interface InvoiceLineItem {
+  id: number
+  description: string
+  quantity: string | null
+  unit_price: string | null
+  amount: string | null
+}
+
 export interface Invoice {
   id: number
   file: string
@@ -15,6 +23,7 @@ export interface Invoice {
   purchase_order: number | null
   created_at: string
   exceptions: InvoiceException[]
+  line_items?: InvoiceLineItem[]
   extracted_vendor_name?: string | null
   extracted_invoice_no?: string | null
   extracted_invoice_date?: string | null

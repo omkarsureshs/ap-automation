@@ -123,12 +123,36 @@ function CorrectionForm({
   )
 }
 
+function LineItemsPreview({ items }: { items: NonNullable<Invoice['line_items']> }) {
+  return (
+    <table className="mt-1 w-full max-w-sm border-collapse text-left text-xs">
+      <thead>
+        <tr className="border-b border-hairline text-muted-foreground">
+          <th className="py-1 pr-2 font-medium">Description</th>
+          <th className="py-1 pr-2 text-right font-medium">Qty</th>
+          <th className="py-1 text-right font-medium">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => (
+          <tr key={item.id} className="border-b border-hairline last:border-0">
+            <td className="py-1 pr-2">{item.description}</td>
+            <td className="tabular py-1 pr-2 text-right">{item.quantity ?? '—'}</td>
+            <td className="tabular py-1 text-right">{item.amount ?? '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
 export function UploadPage() {
   const [invoices, setInvoices] = useState<Invoice[] | null>(null)
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [expandedLineItemsId, setExpandedLineItemsId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { show } = useToast()
   const isAdmin = getCurrentUser()?.role === 'ap_admin'
@@ -288,6 +312,22 @@ export function UploadPage() {
                               <li key={exception.id}>{exception.reason}</li>
                             ))}
                           </ul>
+                        )}
+                        {invoice.line_items && invoice.line_items.length > 0 && (
+                          <div className="mt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedLineItemsId((id) => (id === invoice.id ? null : invoice.id))
+                              }
+                              className="text-xs font-medium text-primary underline underline-offset-2"
+                            >
+                              {expandedLineItemsId === invoice.id
+                                ? 'Hide line items'
+                                : `${invoice.line_items.length} line item${invoice.line_items.length === 1 ? '' : 's'}`}
+                            </button>
+                            {expandedLineItemsId === invoice.id && <LineItemsPreview items={invoice.line_items} />}
+                          </div>
                         )}
                         {isAdmin && invoice.status === 'needs_review' && (
                           <div className="mt-1">

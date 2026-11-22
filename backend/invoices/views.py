@@ -4,7 +4,8 @@ from rest_framework.response import Response
 
 from accounts.permissions import HasRole
 from invoices.extraction import extract_fields
-from invoices.models import Invoice, InvoiceException
+from invoices.llm_extraction import extract_line_items
+from invoices.models import Invoice, InvoiceException, InvoiceLineItem
 from invoices.ocr import OcrError, run_ocr
 from invoices.serializers import InvoiceCorrectionSerializer, InvoiceSerializer
 from invoices.validation import validate_invoice
@@ -62,6 +63,12 @@ class InvoiceUploadView(generics.ListCreateAPIView):
             invoice.extracted_gstin = fields["gstin"]
             invoice.extracted_total_amount = fields["total_amount"]
             invoice.extracted_vendor_name = fields["vendor_name"]
+
+            line_items = extract_line_items(invoice.raw_ocr_text)
+            if line_items:
+                InvoiceLineItem.objects.bulk_create(
+                    [InvoiceLineItem(invoice=invoice, order=i, **item) for i, item in enumerate(line_items)]
+                )
 
             _validate_and_match(invoice)
         except OcrError as exc:

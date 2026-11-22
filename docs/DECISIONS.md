@@ -27,19 +27,41 @@ field on the user profile, JWT auth (`djangorestframework-simplejwt`), no SSO.
 exist, but Django's full groups/permissions system is more machinery than a
 3-day build needs. JWT is the standard, expected pairing with a React SPA.
 
-### 4. OCR engine: Tesseract, regex-only extraction (no LLM)
+### 4. OCR engine: Tesseract, regex-only header-field extraction
 **Decision:** `pytesseract`/`pdf2image` for OCR; regex + positional heuristics for
-field identification. No cloud vision API, no LLM call.
-**Why:** Keeps the demo dependency-free (no API keys, works offline, no cost) and
-deterministic to test. **How to describe this honestly to interviewers:**
-Tesseract's engine (v4+) is itself a neural network (LSTM) — calling the OCR step
-"AI-powered" is accurate, not marketing. The *field classification* layer on top
-is deliberately rule-based regex, not ML — don't claim that part is "AI," since
-that would be the actual overclaim. Framing: "OCR via Tesseract's LSTM deep-learning
-engine, with a rule-based/fuzzy-matching layer for field classification, designed
-to be swappable for an ML/LLM classifier later." This shows you know the
-difference between the two layers, which reads as more competent than a vague
-"AI-powered" claim.
+*header* field identification (invoice no., date, GSTIN, vendor name, total). No
+cloud vision API, no LLM call for these five fields.
+**Why:** Keeps that part of the demo dependency-free (no API keys, works offline,
+no cost) and deterministic to test. **How to describe this honestly to
+interviewers:** Tesseract's engine (v4+) is itself a neural network (LSTM) —
+calling the OCR step "AI-powered" is accurate, not marketing. The *header-field
+classification* layer on top is deliberately rule-based regex, not ML — don't
+claim that part is "AI," since that would be the actual overclaim.
+
+**Addendum — line items are the deliberate exception.** Real line-item/table
+extraction from OCR text is genuinely hard with regex: column alignment varies
+across invoice layouts, and OCR noise breaks naive column-splitting. Rather than
+ship fragile regex likely to misfire on an unfamiliar invoice live in a demo,
+`invoices/llm_extraction.py` calls an LLM (Anthropic, model configurable via
+`ANTHROPIC_MODEL`) with the OCR'd text, asking for a structured JSON array of
+line items. This is scoped narrowly and kept honest about its limits:
+- **Best-effort only.** Nothing in validation, matching or approval depends on
+  it succeeding — a missing or malformed response just means no line items
+  are shown, never an upload failure.
+- **Never trusted as a number.** Every field comes back as a `CharField`, same
+  as the regex-extracted header fields — an LLM's read of an amount is still
+  unverified free text, not something the system does arithmetic on without a
+  human looking at it.
+- **No key configured → silently does nothing.** `extract_line_items()` returns
+  `[]` immediately if `ANTHROPIC_API_KEY` isn't set, so the feature degrades to
+  "not present" rather than failing loudly, in any environment that hasn't
+  configured it.
+
+This framing matters for the interview: the header-field decision above is a
+genuine instance of "automation, not AI" done on purpose; line items are the
+one place an LLM is actually used, and only because the realistic alternative
+is fragile, overfit regex for a task that is legitimately an unstructured
+reading problem — not applying an LLM everywhere for its own sake.
 
 ### 5. PO/GRN data source
 **Decision:** Build a small internal PO & GRN CRUD module with CSV bulk import

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from invoices.models import Invoice, InvoiceException
+from invoices.models import Invoice, InvoiceException, InvoiceLineItem
 
 ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif")
 
@@ -19,14 +19,21 @@ class InvoiceExceptionSerializer(serializers.ModelSerializer):
         fields = ["id", "reason", "created_at"]
 
 
+class InvoiceLineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceLineItem
+        fields = ["id", "description", "quantity", "unit_price", "amount"]
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     exceptions = InvoiceExceptionSerializer(many=True, read_only=True)
+    line_items = InvoiceLineItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Invoice
         fields = [
             "id", "file", "source", "status", "uploaded_by", "raw_ocr_text", "created_at",
-            "exceptions", "purchase_order", "match_status",
+            "exceptions", "purchase_order", "match_status", "line_items",
             "extracted_invoice_no", "extracted_invoice_date", "extracted_gstin",
             "extracted_total_amount", "extracted_vendor_name",
         ]

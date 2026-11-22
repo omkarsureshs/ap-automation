@@ -33,7 +33,8 @@ Full walkthrough with diagrams: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
 | Module | Status | Notes |
 |---|---|---|
 | Invoice capture | Real (manual upload) | PDF/PNG/JPG, extension and magic-byte checks. **Email (IMAP) ingestion is not built.** |
-| OCR extraction | Real | Tesseract (LSTM engine) via pytesseract + pdf2image/Poppler. Field extraction is deliberately regex, not an LLM (DECISIONS.md #4). Runs synchronously inside the upload request. |
+| OCR extraction | Real | Tesseract (LSTM engine) via pytesseract + pdf2image/Poppler. Header-field extraction is deliberately regex, not an LLM; line-item extraction uses an LLM instead, on purpose (DECISIONS.md #4). Runs synchronously inside the upload request. |
+| Line-item extraction | Real, LLM-based, best-effort | `invoices/llm_extraction.py` calls Anthropic with the OCR'd text for a structured JSON line-item list. Optional: does nothing if `ANTHROPIC_API_KEY` isn't set, never blocks an upload if it fails. |
 | Validation engine | Real | Mandatory fields, GSTIN modulo-36 checksum, vendor master check, amount, duplicate detection; failures become exception rows. |
 | PO matching | Real | 2-way (PO vs invoice) and 3-way (PO vs GRN vs invoice), 1% tolerance. PO/GRN entered via CRUD or CSV import (no real ERP). |
 | Workflow / approvals | Real | Configurable amount-based ApprovalRule matrix, parallel steps, escalation command, in-app notifications plus email (console backend by default). |
@@ -86,7 +87,7 @@ Demo logins (created by `seed_demo`), password `Demo@12345` for all:
 
 Useful URLs: health `http://localhost:8000/api/health/`, API docs `http://localhost:8000/api/docs/`.
 
-Environment variables (all optional in dev): `POSTGRES_DB/USER/PASSWORD/HOST/PORT`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FIELD_ENCRYPTION_KEY`, `TESSERACT_CMD`, `POPPLER_PATH`, `EMAIL_HOST/PORT/HOST_USER/HOST_PASSWORD/USE_TLS`, `DEFAULT_FROM_EMAIL`, `BANKING_GATEWAY`. Frontend: `VITE_API_BASE` (defaults to `http://localhost:8000`). A full template is in `.env.example`.
+Environment variables (all optional in dev): `POSTGRES_DB/USER/PASSWORD/HOST/PORT`, `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FIELD_ENCRYPTION_KEY`, `TESSERACT_CMD`, `POPPLER_PATH`, `EMAIL_HOST/PORT/HOST_USER/HOST_PASSWORD/USE_TLS`, `DEFAULT_FROM_EMAIL`, `BANKING_GATEWAY`, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL` (optional — enables LLM line-item extraction; without it the feature just doesn't add any line items, nothing breaks). Frontend: `VITE_API_BASE` (defaults to `http://localhost:8000`). A full template is in `.env.example`.
 
 ## Tests
 

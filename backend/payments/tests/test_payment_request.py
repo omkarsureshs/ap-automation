@@ -38,6 +38,37 @@ def test_ap_admin_can_request_payment_for_approved_invoice(auth_client_ap_admin,
     assert Payment.objects.filter(invoice=approved_invoice).exists()
 
 
+def test_completed_payment_emails_a_payment_advice_to_the_vendor(auth_client_ap_admin, uploader, mailoutbox):
+    from procurement.models import PurchaseOrder
+    from vendors.models import Vendor
+
+    vendor = Vendor.objects.create(
+        name="Acme Supplies", gstin="27AAACC1206D1ZG", email="billing@acme.test",
+        bank_account_number="1234567890", bank_ifsc="HDFC0001234",
+    )
+    po = PurchaseOrder.objects.create(po_number="PO-ADVICE-1", vendor=vendor, total_amount="1500.00")
+    invoice = Invoice.objects.create(
+        file="invoices/advice-test.pdf", uploaded_by=uploader, extracted_total_amount="1500.00",
+        extracted_invoice_no="INV-ADVICE-1", status=Invoice.STATUS_APPROVED, purchase_order=po,
+    )
+
+    resp = auth_client_ap_admin.post("/api/payments/", {"invoice": invoice.id})
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "completed"
+
+    advice_emails = [m for m in mailoutbox if m.to == ["billing@acme.test"]]
+    assert len(advice_emails) == 1
+    assert "INV-ADVICE-1" in advice_emails[0].subject
+    assert "1500.00" in advice_emails[0].body
+
+
+def test_payment_advice_not_sent_when_invoice_has_no_po_linked(auth_client_ap_admin, approved_invoice, mailoutbox):
+    resp = auth_client_ap_admin.post("/api/payments/", {"invoice": approved_invoice.id})
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "completed"
+    assert mailoutbox == []
+
+
 def test_requester_cannot_request_payment(auth_client_requester, approved_invoice):
     resp = auth_client_requester.post("/api/payments/", {"invoice": approved_invoice.id})
     assert resp.status_code == 403

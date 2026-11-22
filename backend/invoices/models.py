@@ -61,6 +61,29 @@ class Invoice(models.Model):
         return f"Invoice({self.id}, {self.status})"
 
 
+class InvoiceLineItem(models.Model):
+    """Materials/services billed, pulled from OCR text by an LLM (invoices/llm_extraction.py).
+
+    Best-effort: validation, matching and approval never depend on these
+    existing. CharField throughout, matching the extracted_* fields on
+    Invoice -- an LLM's read of a number is still untrusted free text,
+    not a number we'd do arithmetic on without a human looking at it.
+    """
+
+    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="line_items")
+    order = models.PositiveIntegerField(default=0)
+    description = models.CharField(max_length=500)
+    quantity = models.CharField(max_length=50, null=True, blank=True)
+    unit_price = models.CharField(max_length=50, null=True, blank=True)
+    amount = models.CharField(max_length=50, null=True, blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"InvoiceLineItem(invoice={self.invoice_id}, {self.description!r})"
+
+
 class InvoiceException(models.Model):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="exceptions")
     reason = models.CharField(max_length=255)
