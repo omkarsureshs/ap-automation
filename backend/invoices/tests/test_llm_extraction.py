@@ -32,11 +32,11 @@ def test_non_list_json_returns_empty_list():
 
 
 def test_extract_line_items_returns_empty_without_an_api_key(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     assert extract_line_items("some invoice text") == []
 
 
 def test_extract_line_items_returns_empty_for_blank_text(monkeypatch):
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "fake-key-for-test")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key-for-test")
     assert extract_line_items("") == []
     assert extract_line_items("   ") == []

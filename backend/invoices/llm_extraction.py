@@ -46,25 +46,23 @@ def _parse_response_text(text: str) -> list[dict]:
 def extract_line_items(raw_text: str) -> list[dict]:
     """Ask an LLM to pull structured line items out of OCR'd invoice text.
 
-    Best-effort and optional: nothing in the validation/matching/approval
-    pipeline depends on this succeeding. Returns [] (never raises) if no
-    API key is configured, the text is empty, or the call/parse fails.
+    Uses Google's Gemini API (genuinely free tier, unlike Anthropic/OpenAI
+    which are pay-as-you-go). Best-effort and optional: nothing in the
+    validation/matching/approval pipeline depends on this succeeding.
+    Returns [] (never raises) if no API key is configured, the text is
+    empty, or the call/parse fails.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key or not raw_text or not raw_text.strip():
         return []
 
     try:
-        import anthropic
+        import google.generativeai as genai
 
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=os.environ.get("ANTHROPIC_MODEL", "claude-haiku-5-5"),
-            max_tokens=1024,
-            messages=[{"role": "user", "content": _PROMPT + raw_text}],
-        )
-        text = "".join(block.text for block in response.content if hasattr(block, "text"))
-        return _parse_response_text(text)
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(os.environ.get("GEMINI_MODEL", "gemini-2.0-flash"))
+        response = model.generate_content(_PROMPT + raw_text)
+        return _parse_response_text(response.text)
     except Exception:
         logger.exception("LLM line-item extraction failed")
         return []

@@ -42,8 +42,8 @@ claim that part is "AI," since that would be the actual overclaim.
 extraction from OCR text is genuinely hard with regex: column alignment varies
 across invoice layouts, and OCR noise breaks naive column-splitting. Rather than
 ship fragile regex likely to misfire on an unfamiliar invoice live in a demo,
-`invoices/llm_extraction.py` calls an LLM (Anthropic, model configurable via
-`ANTHROPIC_MODEL`) with the OCR'd text, asking for a structured JSON array of
+`invoices/llm_extraction.py` calls an LLM (Google Gemini, genuinely free unlike Anthropic/OpenAI, model configurable via
+`GEMINI_MODEL`) with the OCR'd text, asking for a structured JSON array of
 line items. This is scoped narrowly and kept honest about its limits:
 - **Best-effort only.** Nothing in validation, matching or approval depends on
   it succeeding — a missing or malformed response just means no line items
@@ -53,7 +53,7 @@ line items. This is scoped narrowly and kept honest about its limits:
   unverified free text, not something the system does arithmetic on without a
   human looking at it.
 - **No key configured → silently does nothing.** `extract_line_items()` returns
-  `[]` immediately if `ANTHROPIC_API_KEY` isn't set, so the feature degrades to
+  `[]` immediately if `GEMINI_API_KEY` isn't set, so the feature degrades to
   "not present" rather than failing loudly, in any environment that hasn't
   configured it.
 
