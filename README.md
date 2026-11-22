@@ -2,7 +2,17 @@
 
 An Accounts Payable automation system. A user uploads a supplier invoice (PDF or image); the system reads it with OCR, pulls out the key fields, checks them, matches the invoice to a purchase order, routes it through a configurable approval chain, and lets an admin request payment. Dashboards and reports show what is happening.
 
-Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + Django REST Framework + PostgreSQL (backend), React 19 + Vite + Tailwind (frontend).
+Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + Django REST Framework + PostgreSQL (backend), React 19 + Vite + Tailwind (frontend) — the mandated stack, no substitutions.
+
+## Submission checklist
+
+| Requirement | Where |
+|---|---|
+| Source code (React + Django + PostgreSQL) | this repository |
+| Live deployment (added advantage) | Render — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Database schema (tables + relationships) | [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) (ER diagram + per-table breakdown), raw dump at [docs/schema/schema.sql](docs/schema/schema.sql) |
+| Demo video | architecture, design decisions and a full feature walkthrough — script in [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md), ready-made test invoices in [docs/sample-invoices/](docs/sample-invoices/) |
+| Challenges and solutions | [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md) |
 
 ## The invoice journey, in plain words
 
@@ -110,5 +120,6 @@ docs/          documentation (below)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, security, error handling, out of scope
 - [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md): manual QA script with expected results
 - [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md): real problems hit and fixed
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): deployment runbook (Docker files were not built on the dev machine)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): deployment runbook — `render.yaml` is the path actually deployed (Render builds it; no local Docker needed); the Docker Compose path in the same doc was written but never built or run on the dev machine
+- [docs/sample-invoices/](docs/sample-invoices/): three ready-made test PDFs (verified against the real OCR pipeline) for a fresh database, covering the happy path, PO tolerance matching, and the exceptions queue
 - [docs/DECISIONS.md](docs/DECISIONS.md), [docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md), [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md), [docs/superpowers/](docs/superpowers/) (specs and plans)

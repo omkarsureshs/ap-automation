@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-> **Not verified on this machine.** Docker was unavailable on the development machine, so `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.prod.yml` and `.github/workflows/ci.yml` were written but never built, run or tested. Expect to fix small things on first build. Everything below is a plan, not a report of something that worked.
+> **Render (Path A, via `render.yaml`) is the one actually deployed and verified live** — Render builds `backend/Dockerfile` on its own infrastructure, so the lack of local Docker was never a blocker for this path. **Everything else below is unverified on this machine.** Docker was unavailable on the development machine, so `frontend/Dockerfile`, `frontend/nginx.conf`, `docker-compose.prod.yml` and `.github/workflows/ci.yml` were written but never built, run or tested locally. Expect to fix small things on first build of those. The manual Path A steps below predate `render.yaml` and are kept for reference/understanding, not as the actual deploy procedure.
 
 ## Fix these before deploying (status as of the last review pass)
 
@@ -35,7 +35,9 @@ Items 1, 3 and 4 below were real gaps when this doc was first written; they are 
 
 ## Path A: Render
 
-DECISIONS.md #8 describes one Render web service. As written, the backend image serves only the API; the React app is built by `frontend/Dockerfile` with nginx. The simplest working Render layout is therefore two services, which differs slightly from decision #8. For a true single service, use Path B on a VPS (nginx in front of both).
+**Actual procedure: `render.yaml` in the repo root.** Render dashboard → New → Blueprint → connect this repo; it auto-detects `render.yaml` and provisions a free Postgres instance, the backend as a Docker web service, and the frontend as a static site (`npm run build`, no nginx needed for a static site on Render). It pauses once to ask for `FIELD_ENCRYPTION_KEY` (deliberately left out of the committed file — generate one with the command in the table below and paste it in). One caveat hit in practice: Render appends a random suffix to service names on collision (e.g. `-qxbs`), so `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` and the frontend's `VITE_API_BASE` may need updating to the *actual* assigned hostnames after first deploy — check the dashboard for the real URLs rather than assuming the ones in `render.yaml`.
+
+The manual steps below describe the same shape by hand, from before `render.yaml` existed. DECISIONS.md #8 describes one Render web service; as written, the backend image serves only the API, and the React app would need `frontend/Dockerfile` with nginx. The simplest working Render layout is therefore two services (what both `render.yaml` and the steps below actually do), which differs slightly from decision #8. For a true single service, use Path B on a VPS (nginx in front of both).
 
 1. Create a **PostgreSQL** instance on Render. Note the internal host, database, user and password.
 2. Create a **Web Service** from this repo: environment Docker, root directory `backend`, Dockerfile `backend/Dockerfile`. Set the env vars above. Set **Health Check Path** to `/api/health/`.
