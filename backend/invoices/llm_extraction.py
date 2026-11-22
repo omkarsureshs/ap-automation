@@ -80,7 +80,7 @@ def extract_line_items(raw_text: str) -> list[dict]:
         api_key=api_key,
         http_options=genai_types.HttpOptions(timeout=_REQUEST_TIMEOUT_MS),
     )
-    model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
