@@ -98,6 +98,28 @@ def valid_invoice_image_file():
 
 
 @pytest.fixture
+def valid_invoice_tiff_file():
+    img = Image.new("RGB", (700, 350), color="white")
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default(size=28)
+    lines = [
+        "INVOICE",
+        "Invoice No: INV-2026-0100",
+        "Invoice Date: 18/11/2026",
+        "GSTIN: 27AAACC1206D1ZG",
+        "Vendor: Acme Supplies Pvt Ltd",
+        "Total Amount: 6,000.00",
+    ]
+    y = 10
+    for line in lines:
+        draw.text((20, y), line, fill="black", font=font)
+        y += 50
+    buf = io.BytesIO()
+    img.save(buf, format="TIFF")
+    return SimpleUploadedFile("valid_invoice.tiff", buf.getvalue(), content_type="image/tiff")
+
+
+@pytest.fixture
 def known_vendor_for_sample_invoice(db):
     from vendors.models import Vendor
 

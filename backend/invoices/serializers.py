@@ -2,12 +2,14 @@ from rest_framework import serializers
 
 from invoices.models import Invoice, InvoiceException
 
-ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg")
+ALLOWED_EXTENSIONS = (".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif")
 
 _MAGIC_BYTES = (
     b"%PDF",
     b"\x89PNG\r\n\x1a\n",
     b"\xff\xd8\xff",  # JPEG
+    b"II*\x00",  # TIFF, little-endian
+    b"MM\x00*",  # TIFF, big-endian
 )
 
 
@@ -38,7 +40,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def validate_file(self, value):
         name = value.name.lower()
         if not name.endswith(ALLOWED_EXTENSIONS):
-            raise serializers.ValidationError("File must be a PDF or image (.pdf, .png, .jpg, .jpeg).")
+            raise serializers.ValidationError("File must be a PDF or image (.pdf, .png, .jpg, .jpeg, .tiff).")
         if value.size == 0:
             raise serializers.ValidationError("File must not be empty.")
         header = value.read(8)

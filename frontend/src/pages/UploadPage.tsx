@@ -148,24 +148,34 @@ export function UploadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleFile(file: File) {
-    if (uploading) return
+  async function handleFiles(files: File[]) {
+    if (uploading || files.length === 0) return
     setUploading(true)
-    try {
-      await uploadInvoice(file)
-      show({ title: 'Invoice uploaded', description: file.name, variant: 'success' })
-      await refresh()
-    } catch (err) {
-      show({ title: "Couldn't upload invoice", description: uploadErrorMessageFor(err), variant: 'error' })
-    } finally {
-      setUploading(false)
+    let succeeded = 0
+    let failed = 0
+    for (const file of files) {
+      try {
+        await uploadInvoice(file)
+        succeeded++
+      } catch (err) {
+        failed++
+        show({ title: `Couldn't upload ${file.name}`, description: uploadErrorMessageFor(err), variant: 'error' })
+      }
     }
+    if (succeeded > 0) {
+      show({
+        title: files.length === 1 ? 'Invoice uploaded' : `${succeeded} of ${files.length} invoices uploaded`,
+        description: files.length === 1 ? files[0].name : failed > 0 ? `${failed} failed` : undefined,
+        variant: 'success',
+      })
+    }
+    await refresh()
+    setUploading(false)
   }
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
+    handleFiles(Array.from(e.dataTransfer.files))
   }
 
   async function handleDelete(invoice: Invoice) {
@@ -214,16 +224,16 @@ export function UploadPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
+              accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
+              multiple
               className="hidden"
               disabled={uploading}
               onChange={(e) => {
-                const file = e.target.files?.[0]
-                if (file) handleFile(file)
+                handleFiles(Array.from(e.target.files ?? []))
                 e.target.value = ''
               }}
             />
-            {uploading ? 'Uploading…' : 'Drag & drop an invoice, or click to choose a file'}
+            {uploading ? 'Uploading…' : 'Drag & drop one or more invoices, or click to choose files'}
           </div>
 
           {invoicesNeedingReview.length > 0 && (
