@@ -25,4 +25,7 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Migrate on every start (idempotent), then serve. OCR is synchronous, so keep a long timeout.
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
+# --users-only: a deployed instance should start genuinely empty (no synthetic
+# demo-001..012 invoices), not pre-populated -- just the 4 login accounts and
+# the one approval rule needed for the workflow to function at all.
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo --users-only && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]

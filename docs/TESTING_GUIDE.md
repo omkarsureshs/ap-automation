@@ -7,18 +7,38 @@ Wording note: where the exact on-screen text is not fixed by the code, this guid
 ## 0. Prerequisites
 
 - Postgres running, Tesseract and Poppler installed (`tesseract --version` works).
-- A fresh sample invoice: a PDF/PNG/JPG tax invoice containing an invoice number, date, GSTIN, total and vendor name. A GSTIN in it must match a vendor in the system (the seeded vendors from `seed_demo`, or one you create in scenario 8).
+- Sample invoices are already in the repo — no need to make your own. See
+  [docs/sample-invoices/](sample-invoices/) (full path from repo root:
+  `docs/sample-invoices/`), three files, each verified against the real OCR
+  pipeline:
+  - `test-invoice-northwind.pdf` — clean happy-path invoice (GSTIN
+    `29NWTRA1234P1ZL`, vendor "Northwind Traders", ₹24,500.00).
+  - `test-invoice-stellar.pdf` — for PO matching/tolerance (GSTIN
+    `27STLHW5678Q1Z7`, vendor "Stellar Hardware Co", ₹67,800.00).
+  - `test-invoice-incomplete.pdf` — deliberately missing GSTIN/vendor, for the
+    exceptions queue and the correction flow.
+  - Full instructions for each (which vendor/PO to create first, what tolerance
+    amounts to use) are in `docs/sample-invoices/README.md`.
 - A junk file: any text file renamed to `junk.pdf`.
 - Optional: `curl` for the API checks.
 
 ### Start commands (two terminals)
 
 ```bash
-cd backend && .venv/Scripts/activate && python manage.py migrate && python manage.py seed_demo && python manage.py runserver
+cd backend && .venv/Scripts/activate && python manage.py migrate && python manage.py seed_demo --users-only && python manage.py runserver
 cd frontend && npm run dev
 ```
 
-Open http://localhost:5173. Keep the backend terminal visible: emails print there (console email backend).
+`--users-only` creates just the 4 login accounts and the one approval rule the
+workflow needs — no synthetic demo invoices/vendors/payments, so every row you
+see while testing is something you created live. Drop the flag (plain
+`seed_demo`) if you'd rather explore a pre-populated register instead (12
+invoices across every status, 3 vendors, 2 completed payments) — both are
+idempotent, safe to run again.
+
+Open http://localhost:5173. Keep the backend terminal visible: notification
+emails print there (console email backend — see scenario 13 for why nothing
+lands in a real inbox, and that this is intentional).
 
 ### Demo accounts (password `Demo@12345`)
 
@@ -86,12 +106,35 @@ What each role may do (enforced by the server):
 
 **Steps**
 1. Log in as `requester@demo.com`. Go to `/upload`.
-2. Choose your sample invoice file and click upload. Wait (OCR takes a few seconds; the upload is synchronous).
+2. First create a matching vendor as `admin@demo.com` on `/vendors` — name
+   "Northwind Traders", GSTIN `29NWTRA1234P1ZL` (see
+   `docs/sample-invoices/README.md`) — then as requester, upload
+   `docs/sample-invoices/test-invoice-northwind.pdf`. Wait (OCR takes a few
+   seconds; the upload is synchronous).
 3. Find the new row in the invoice register.
 
-**Expected:** a new row appears. Status is **Validated** (no PO linked, so it stops there) or **Needs Review** with listed reasons if any check failed (for example "Vendor not found in master"). No server error.
+**Expected:** a new row appears. Status is **Validated** (vendor matched, no PO linked, so it stops there). Without the matching vendor created first, it would land in **Needs Review** with "Vendor not found in master" instead — also a valid, expected result, not an error.
 
 **If it differs:** if every upload says "OCR failed", Tesseract/Poppler are not found; set `TESSERACT_CMD` / `POPPLER_PATH`.
+
+## 3a. Bulk upload and TIFF
+
+**Goal:** multiple files in one drop, and a TIFF image, both work.
+
+**Steps**
+1. As requester on `/upload`, drag all three files from `docs/sample-invoices/`
+   onto the dropzone at once (or click to choose, select all three).
+2. Separately, upload a `.tiff`/`.tif` image invoice (any clean invoice image
+   saved as TIFF — Pillow's `img.save(path, "TIFF")` if you need to make one).
+
+**Expected**
+1. A toast like "3 of 3 invoices uploaded"; all three rows appear in the
+   register (two in Needs Review — "Vendor not found in master" / missing
+   GSTIN+vendor — unless you created matching vendors first).
+2. The TIFF is accepted (same magic-byte + OCR pipeline as PDF/PNG/JPG) and
+   reaches Validated/Needs Review like any other image.
+
+**If it differs:** a TIFF rejected with "File must be a PDF or image" means the upload's accepted-extension list regressed.
 
 ## 4. Upload a junk file
 
@@ -103,7 +146,7 @@ What each role may do (enforced by the server):
 
 **Expected**
 1. Rejected with a field error like "File content does not match a PDF or image format."
-2. Rejected: "File must be a PDF or image (.pdf, .png, .jpg, .jpeg)." and "File must not be empty."
+2. Rejected: "File must be a PDF or image (.pdf, .png, .jpg, .jpeg, .tiff)." and "File must not be empty."
 A genuine image that has no readable text is accepted but becomes **Needs Review** with an exception row (missing fields or "OCR failed: ...").
 
 **If it differs:** a renamed `.exe` being accepted is a regression of a bug fixed earlier (see CHALLENGES_AND_SOLUTIONS.md, item b).
@@ -237,7 +280,21 @@ python manage.py shell -c "from workflow.models import ApprovalStep as S; from d
 2. Log in as the target user. Look at the bell in the top bar. Open it, mark one read.
 3. Check the backend terminal.
 
-**Expected:** bell shows an unread count; items like "Invoice #N is waiting for your approval"; marking read reduces the count. The backend terminal prints an email (To/Subject/body) because the console email backend is used.
+**Expected:** bell shows an unread count; items like "Invoice #N is waiting for your approval"; marking read reduces the count. The backend terminal prints an email (To/Subject/body) because the console email backend is used — intentional for this build (see CHALLENGES_AND_SOLUTIONS.md): everything is a real in-app notification, just not relayed to a real SMTP server.
+
+## 13a. Approval reminders
+
+**Goal:** an approver gets nudged once, partway through the escalation window — not just when it finally escalates.
+
+**Steps**
+1. Create a pending approval step (scenario 6A), then set it halfway to its rule's `escalation_hours` (for the default 24h rule, 13 hours back):
+```bash
+python manage.py shell -c "from workflow.models import ApprovalStep as S; from django.utils import timezone as t; from datetime import timedelta as d; s=S.objects.filter(status='pending').first(); s.assigned_at=t.now()-d(hours=13); s.save(); print(s.pk)"
+```
+2. Run `python manage.py send_approval_reminders`.
+3. Run it again immediately.
+
+**Expected:** step 2 prints "1 reminder(s) sent" and the approver gets a new notification ("Reminder: invoice #N is still waiting for your approval"). Step 3 sends nothing more for the same step (never repeats). A step less than halfway through, or already past its full escalation deadline (escalation owns those instead), gets no reminder.
 
 ## 14. Payment request
 
@@ -254,6 +311,14 @@ python manage.py shell -c "from workflow.models import ApprovalStep as S; from d
 3. HTTP 400: "Invoice must be approved before payment can be requested (current status: ...)."
 4. HTTP 403.
 5. The "Ready to pay" section shows a no-access message (approvers can't request payments or see the invoice list), but "Payment history" below it loads normally — one section's error never hides the other.
+
+## 14a. Payment advice email
+
+**Goal:** the vendor gets a payment confirmation once payment completes.
+
+**Steps:** repeat step 1 of scenario 14 for an invoice that has a purchase order linked (so there's a vendor to notify), then check the backend console.
+
+**Expected:** the console prints an email with subject "Payment advice — <invoice no.>", body including the amount, gateway reference and completion date, addressed to the vendor's registered email (not the requester/admin). An invoice with no PO linked (so no vendor on file) completes payment the same way but sends nothing — not an error, just nothing to notify.
 
 ## 15. Dashboard, including empty state and role access
 
@@ -277,6 +342,65 @@ python manage.py shell -c "from workflow.models import ApprovalStep as S; from d
 1. Each tab shows a table; the CSV has a header row and the same rows as shown; an empty report downloads a header-only file, not an error. Open a downloaded CSV in a spreadsheet app and confirm a cell that happens to start with `=`, `+`, `-` or `@` (rare in practice, but possible in an OCR'd vendor name) displays as plain text rather than running as a formula.
 2. HTTP 403, same reasoning as dashboard access above.
 
+## 16a. Line-item extraction (LLM, optional)
+
+**Goal:** materials/services billed on an invoice are pulled out automatically — a best-effort extra, not a core requirement.
+
+**Steps**
+1. Set `GEMINI_API_KEY` (a free key from aistudio.google.com) before starting the backend, then upload any invoice whose text includes line items (description + amount per line — see `docs/sample-invoices/README.md` or write your own; the clean sample invoices don't include line items, since they're built to test header-field extraction specifically).
+2. Without `GEMINI_API_KEY` set, upload the same kind of invoice.
+
+**Expected**
+1. The invoice row shows a "N line items" link; expanding it shows a description/qty/amount table with the real extracted rows.
+2. No line items shown, no error anywhere, upload completes normally exactly as before this feature existed — the system never depends on this succeeding.
+
+**If it differs:** if upload feels like it hangs for 15+ seconds before returning, Gemini's free tier may be temporarily overloaded (its own error says "usually temporary"); the request still completes within ~17 seconds worst case and the invoice is never left in a stuck state.
+
+## 16b. Fix & revalidate (OCR correction)
+
+**Goal:** an AP Admin can fix a field OCR misread and re-validate without re-uploading.
+
+**Steps**
+1. Upload `docs/sample-invoices/test-invoice-incomplete.pdf` (lands in Needs Review — missing GSTIN and vendor name).
+2. As `admin@demo.com`, click "Fix & revalidate" on that row, type in a valid GSTIN and a vendor name (that matches a vendor you've created), save.
+
+**Expected:** the invoice re-validates live — if the fields now satisfy every check, status moves to **Validated** (or further, if matched to a PO) with no exceptions; if something's still wrong, the specific remaining reasons show, not a generic failure. Only available while a non-admin is logged in? No — "Fix & revalidate" only appears for `ap_admin`, and only while the invoice is still in Needs Review (once it moves on, the correction form is gone — matching that it's a financial record at that point, not a draft).
+
+## 16c. Deleting and sorting
+
+**Goal:** records can be cleaned up and tables can be reordered, scoped to what's actually safe to remove.
+
+**Steps**
+1. As `admin@demo.com` on `/upload`, delete an invoice that's still Uploaded/Extracted/Needs Review (not yet Validated).
+2. Try the same on a Validated/Approved/Paid invoice (no delete control should even be offered for it).
+3. On `/vendors`, "Deactivate" a vendor with no purchase orders, then "Reactivate" it; separately, try "Delete" on a vendor that *does* have a purchase order.
+4. Click any sortable column header (e.g. "Vendor" on `/vendors`, "Amount" on `/reports`) twice.
+
+**Expected**
+1. A confirm dialog, then the row disappears with a success toast.
+2. No delete control shown for that row (dash instead) — matches "financial record, not a draft" once validated.
+3. Deactivate/Reactivate both work and flip the Active column; deleting the vendor with a PO on file is refused with a clear message ("has purchase orders on file... deactivate it instead"), not a server error.
+4. First click sorts ascending (arrow flips), second click sorts descending, over the real values (so amounts sort numerically, not as text).
+
+**If it differs:** a vendor-with-POs delete returning a raw 500/stack trace is a regression — it should always be a clean, readable refusal (no Django `ProtectedError` leaking through).
+
+## 16d. Role-aware navigation and header
+
+**Goal:** each role sees only what it can use — hidden, not shown-then-403'd — and the header always shows who's logged in.
+
+**Steps:** log in as each of the four demo accounts and look at the top nav and the header.
+
+**Expected:** header always shows the role ("Requester"/"Approver"/"AP Admin"/"Vendor"), never the raw email (hover it to see the email as a tooltip, if you're curious). Nav links present per role:
+
+| Role | Sees |
+|---|---|
+| Requester | Invoices, Vendors, Purchase Orders, Approvals |
+| Approver | Overview, Approvals, Payments, Reports, Vendors, Purchase Orders |
+| AP Admin | all seven |
+| Vendor | Vendors, Purchase Orders only |
+
+Each role also lands on a page it can actually use right after login (Requester → Invoices, Vendor → Vendors, others → Overview) — not always the dashboard, which Requester/Vendor can't open anyway.
+
 ## 17. Custom 404 page
 
 **Steps:** go to http://localhost:5173/does-not-exist.
@@ -294,9 +418,9 @@ python manage.py shell -c "from workflow.models import ApprovalStep as S; from d
 
 ## 19. Dark mode
 
-**Steps:** switch the operating system/browser to dark mode (or use the theme toggle if one is shown). Visit login, invoices, approvals, dashboard.
+**Steps:** switch the operating system/browser to dark mode (or use the theme toggle if one is shown). Visit login (now a two-panel design with a stat-tile row, register preview and approvals-card preview — worth checking specifically, it's new), invoices, approvals, dashboard.
 
-**Expected:** readable text, visible borders, charts legible; no white boxes with white text.
+**Expected:** readable text, visible borders, charts legible; no white boxes with white text. On login, the ruled-paper texture and ghost watermark on the brand panel should still read as subtle, not harsh, in dark mode.
 
 ## 20. Phone width
 
@@ -326,6 +450,7 @@ curl -i http://localhost:8000/api/invoices/
 | 1 | Wrong password; expired session redirect | | | |
 | 2 | Role access (vendor/approver/requester/admin, masking) | | | |
 | 3 | Valid invoice uploads and validates | | | |
+| 3a | Bulk upload (3 files); TIFF accepted | | | |
 | 4 | Junk/renamed/empty file rejected | | | |
 | 5 | No-PO invoice stays Validated | | | |
 | 6 | PO within tolerance matches; over tolerance mismatches | | | |
@@ -335,9 +460,15 @@ curl -i http://localhost:8000/api/invoices/
 | 11 | Double-decide gives friendly 409 toast | | | |
 | 12 | Escalation command | | | |
 | 13 | Bell + console email | | | |
+| 13a | Approval reminder (halfway, once, not repeated) | | | |
 | 14 | Payment; double request; non-approved; wrong role | | | |
+| 14a | Payment advice email to vendor on completion | | | |
 | 15 | Dashboard populated and empty | | | |
 | 16 | Five reports + CSV | | | |
+| 16a | Line-item extraction (with/without GEMINI_API_KEY) | | | |
+| 16b | Fix & revalidate corrects OCR misreads | | | |
+| 16c | Delete (scoped) + deactivate vendor; column sorting | | | |
+| 16d | Role-aware nav + header shows role not email | | | |
 | 17 | Custom 404 | | | |
 | 18 | Backend-down banner and retry | | | |
 | 19 | Dark mode | | | |

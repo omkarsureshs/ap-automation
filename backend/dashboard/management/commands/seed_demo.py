@@ -55,6 +55,14 @@ INVOICES = [
 class Command(BaseCommand):
     help = "Seed idempotent demo data (users, vendors, POs, invoices, approvals, payments)."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--users-only",
+            action="store_true",
+            help="Only create the 4 login accounts and the approval rule -- no demo vendors/invoices/"
+            "payments. For a deployed instance that should start genuinely empty, not pre-populated.",
+        )
+
     def handle(self, *args, **opts):
         User = get_user_model()
         users = {}
@@ -65,6 +73,18 @@ class Command(BaseCommand):
                 u.save()
             users[role] = u
 
+        rule, _ = ApprovalRule.objects.get_or_create(
+            min_amount=0, max_amount=Decimal("1000000"),
+            defaults={"approver_roles": ["approver"], "escalation_hours": 24},
+        )
+
+        if opts["users_only"]:
+            self.stdout.write(self.style.SUCCESS(
+                f"seed_demo --users-only: 4 login accounts + 1 approval rule ready. "
+                f"Logins: requester/approver/admin/vendor@demo.com, password {PASSWORD}"
+            ))
+            return
+
         vendors = []
         for name, gstin in VENDORS:
             v, _ = Vendor.objects.get_or_create(
@@ -73,11 +93,6 @@ class Command(BaseCommand):
                           "bank_account_number": "50100123456789", "bank_ifsc": "HDFC0001234"},
             )
             vendors.append(v)
-
-        rule, _ = ApprovalRule.objects.get_or_create(
-            min_amount=0, max_amount=Decimal("1000000"),
-            defaults={"approver_roles": ["approver"], "escalation_hours": 24},
-        )
 
         now = timezone.now()
         created_count = 0
