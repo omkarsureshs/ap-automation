@@ -64,18 +64,25 @@ class InvoiceUploadView(generics.ListCreateAPIView):
             invoice.extracted_total_amount = fields["total_amount"]
             invoice.extracted_vendor_name = fields["vendor_name"]
 
-            line_items = extract_line_items(invoice.raw_ocr_text)
-            if line_items:
-                InvoiceLineItem.objects.bulk_create(
-                    [InvoiceLineItem(invoice=invoice, order=i, **item) for i, item in enumerate(line_items)]
-                )
-
             _validate_and_match(invoice)
         except OcrError as exc:
             reason = f"OCR failed: {exc}"[:255]
             InvoiceException.objects.create(invoice=invoice, reason=reason)
             invoice.status = Invoice.STATUS_NEEDS_REVIEW
         invoice.save()
+
+        # Best-effort and optional, deliberately last: the invoice's real
+        # status/validation/matching result is already durably saved above,
+        # so a slow or interrupted LLM call here can never leave the
+        # invoice itself stuck mid-processing (seen for real while testing:
+        # a client disconnect during this call used to leave the row frozen
+        # at its pre-OCR "uploaded" status).
+        if invoice.raw_ocr_text:
+            line_items = extract_line_items(invoice.raw_ocr_text)
+            if line_items:
+                InvoiceLineItem.objects.bulk_create(
+                    [InvoiceLineItem(invoice=invoice, order=i, **item) for i, item in enumerate(line_items)]
+                )
 
 
 _DELETABLE_STATUSES = (Invoice.STATUS_UPLOADED, Invoice.STATUS_EXTRACTED, Invoice.STATUS_NEEDS_REVIEW)

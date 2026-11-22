@@ -5,9 +5,10 @@ import time
 
 logger = logging.getLogger(__name__)
 
-_MAX_ATTEMPTS = 3
+_MAX_ATTEMPTS = 2
 _RETRYABLE_STATUS_CODES = (429, 500, 503)
-_REQUEST_TIMEOUT_MS = 30_000
+_REQUEST_TIMEOUT_MS = 8_000
+_BACKOFF_SECONDS = 1
 
 _PROMPT = (
     "Extract the line items (materials or services billed) from this OCR'd invoice text. "
@@ -60,13 +61,11 @@ def extract_line_items(raw_text: str) -> list[dict]:
     This runs synchronously inside the invoice upload request, so a
     request with no timeout configured (the SDK default) can hang the
     whole upload indefinitely if the network stalls -- caught by actually
-    testing against the live API, not assumed. Every call gets a 30s
-    hard timeout via HttpOptions.
-
-    Retries a few times, with a short backoff, on transient errors (429
-    rate-limited, 500/503 the model is temporarily overloaded) -- demo-
-    scale usage won't hit the free tier's real quota, but the shared
-    model itself is sometimes briefly overloaded regardless of quota.
+    testing against the live API, not assumed. Every call gets an 8s
+    hard timeout via HttpOptions, and only one retry (worst case ~17s
+    total) -- deliberately short: this is best-effort and optional, so
+    it should never make an invoice upload feel broken or hung even
+    while Gemini's shared free tier is having a bad day.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key or not raw_text or not raw_text.strip():
@@ -90,7 +89,7 @@ def extract_line_items(raw_text: str) -> list[dict]:
             retryable = getattr(exc, "code", None) in _RETRYABLE_STATUS_CODES
             if retryable and attempt < _MAX_ATTEMPTS:
                 logger.warning("Gemini call failed (attempt %d/%d), retrying: %s", attempt, _MAX_ATTEMPTS, exc)
-                time.sleep(2**attempt)
+                time.sleep(_BACKOFF_SECONDS)
                 continue
             logger.exception("LLM line-item extraction failed")
             return []
