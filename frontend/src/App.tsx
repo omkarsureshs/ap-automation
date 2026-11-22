@@ -35,8 +35,8 @@ function UserMenu() {
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="text-muted-foreground">
-        {user.email} <span className="text-xs">· {ROLE_LABELS[user.role] ?? user.role}</span>
+      <span className="font-medium text-foreground" title={user.email}>
+        {ROLE_LABELS[user.role] ?? user.role}
       </span>
       <button
         type="button"
