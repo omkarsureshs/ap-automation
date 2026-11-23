@@ -155,7 +155,7 @@ The vendor master. `bank_account_number` and `bank_ifsc` are encrypted at the ap
 | `purchase_order_id` | bigint FK → `procurement_purchaseorder.id` | `ON DELETE CASCADE` |
 
 ### `invoices_invoice`
-The central table. **FK → `accounts_user.uploaded_by_id`** and **FK → `procurement_purchaseorder.purchase_order_id`** (nullable — an invoice doesn't have to be linked to a PO to exist, only to be matched).
+The central table. **FK → `accounts_user.uploaded_by_id`** and **FK → `procurement_purchaseorder.purchase_order_id`** (nullable — an invoice does not require a linked PO to exist, only to be matched).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -170,7 +170,7 @@ The central table. **FK → `accounts_user.uploaded_by_id`** and **FK → `procu
 | `purchase_order_id` | bigint FK → `procurement_purchaseorder.id`, nullable | `ON DELETE SET NULL` |
 
 ### `invoices_invoiceexception`
-**FK → `invoices_invoice.invoice_id`.** One row per validation/matching failure reason — an invoice with 3 problems gets 3 rows, not one row with a combined message. This is what populates the manual-review/exceptions queue.
+**FK → `invoices_invoice.invoice_id`.** One row per validation/matching failure reason — an invoice with three problems produces three rows rather than a single row with a combined message. These rows populate the manual-review/exceptions queue.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -229,4 +229,4 @@ invoices_invoice ──< workflow_approvalstep (invoice)
 workflow_approvalrule ──< workflow_approvalstep (rule)
 ```
 
-`vendors_vendor.gstin` is also the join key `validate_invoice`/`match_invoice` use at the application level to cross-check an invoice's OCR'd GSTIN against the vendor master and the PO's vendor — it isn't a declared foreign key (the invoice stores the GSTIN as free text from OCR, which may not resolve to any vendor row), but it's the de facto relationship driving validation and matching.
+`vendors_vendor.gstin` also serves as the join key used by `validate_invoice`/`match_invoice` at the application level to cross-check an invoice's OCR-extracted GSTIN against the vendor master and the PO's vendor. It is not a declared foreign key — the invoice stores the GSTIN as free text from OCR, which may not resolve to any vendor row — but it constitutes the de facto relationship driving validation and matching.

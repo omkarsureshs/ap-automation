@@ -1,20 +1,18 @@
 # Day 3: Mock Payment Processing, Dashboards, Reports Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Goal:** Close out the remaining scope-doc modules — Payment Processing (mock gateway, request/status/advice), Dashboards (6 real charts over real data), Reports (5 report types + CSV export, derived from genuine historical records, no fabricated audit table) — and finish with README + Challenges writeup, the full Day 3 slice from the design doc.
 
-**Goal:** Close out the remaining scope-doc modules — Payment Processing (mock gateway, request/status/advice), Dashboards (6 real charts over real data), Reports (5 report types + CSV export, derived from genuine historical records, no fabricated audit table) — and finish with README + Challenges writeup, the full Day 3 slice from `docs/DECISIONS.md` and the design doc.
-
-**Architecture:** A new `payments` app with a `BankingGateway` abstract interface and `MockBankingGateway` (DECISIONS.md #7 — simulated, swappable), triggered only for invoices already at `Invoice.STATUS_APPROVED`. A new `dashboard` app exposes one aggregate endpoint computed live via Django ORM aggregates (`Count`/`Avg`/`Sum`) over `Invoice`/`ApprovalStep`/`Payment` — no new tables duplicating data that already exists. Reports reuse the same real data: the "audit log" report is a derived, on-the-fly union of `InvoiceException`, `ApprovalStep` decisions, and `Payment` events (each already has its own timestamp) rather than a new log table nobody writes to reliably — this keeps the audit trail honest (real events, not a parallel ledger that can drift from the data it's supposed to describe).
+**Architecture:** A new `payments` app with a `BankingGateway` abstract interface and `MockBankingGateway` (simulated, swappable), triggered only for invoices already at `Invoice.STATUS_APPROVED`. A new `dashboard` app exposes one aggregate endpoint computed live via Django ORM aggregates (`Count`/`Avg`/`Sum`) over `Invoice`/`ApprovalStep`/`Payment` — no new tables duplicating data that already exists. Reports reuse the same real data: the "audit log" report is a derived, on-the-fly union of `InvoiceException`, `ApprovalStep` decisions, and `Payment` events (each already has its own timestamp) rather than a new log table nobody writes to reliably — this keeps the audit trail honest (real events, not a parallel ledger that can drift from the data it's supposed to describe).
 
 **Tech Stack:** Existing stack only. Recharts (already a Day-0 decision, not yet installed — added now) for the dashboard; CSV export via Python's stdlib `csv` module (same as the Day 2 import pattern, no new backend dependency).
 
-**Spec:** `docs/superpowers/specs/2026-11-18-ap-automation-design.md` (Architecture: Payment processing, Dashboards, Reports sections; Build sequence Day 3), with reasoning in `docs/DECISIONS.md` (#7 banking mock, #10 testing depth, #11 report format).
+**Spec:** `docs/2026-11-18-ap-automation-design.md` (Architecture: Payment processing, Dashboards, Reports sections; Build sequence Day 3).
 
 ## Global Constraints
 
 - Mandatory stack unchanged: Django + DRF + PostgreSQL, React + TypeScript + Tailwind.
 - Payment can only be requested for an invoice at `status == "approved"` — never for `pending_approval`, `needs_review`, or an invoice already paid.
-- `MockBankingGateway` is a concrete implementation of an abstract `BankingGateway` interface, swappable via a settings flag, per DECISIONS.md #7 — not a function call hardcoded into the view.
+- `MockBankingGateway` is a concrete implementation of an abstract `BankingGateway` interface, swappable via a settings flag — not a function call hardcoded into the view.
 - No new "audit log" table that duplicates data other tables already own; the audit report is computed from existing timestamps.
 - CSV export follows the existing import pattern's honesty standard: real data, real column headers, no placeholder/lorem content.
 - Follow existing patterns: `HasRole(*roles)` for permissions, pytest-django + DRF `APIClient` for backend tests, TDD RED→GREEN→commit per task, the ledger-register design system and typed `ApiError` handling for every new frontend page (no regression to a plain `<table>` or generic error string).
@@ -25,7 +23,7 @@
 - Requesting payment for an invoice that is not `approved` (e.g. still `pending_approval`, or `rejected`) — should be refused with a clear reason, not silently processed.
 - Dashboard aggregates when there is no data at all (fresh install, zero invoices) — percentages and averages must not divide by zero or render `NaN`/`Infinity`.
 - A GST/tax report row where `extracted_gstin` or `extracted_total_amount` is null (an invoice that never got that far) — should be excluded or clearly marked, not crash the CSV export or silently coerce `null` to `"None"`.
-- The OCR accuracy metric must measure something real and defensible (e.g. "% of invoices that needed no manual correction before validation"), not an invented number with no basis in the data — this is exactly the kind of claim DECISIONS.md #1 warns against faking.
+- The OCR accuracy metric must measure something real and defensible (e.g. "% of invoices that needed no manual correction before validation"), not an invented number with no basis in the data.
 
 ---
 
@@ -39,8 +37,8 @@
 **Interfaces:**
 - Produces:
   - `payments.gateways.BankingGateway` — abstract base class (`abc.ABC`) with abstract method `initiate_payment(self, amount: Decimal, reference: str) -> PaymentResult`, where `PaymentResult` is a small dataclass `{status: Literal["completed", "failed"], gateway_reference: str, failure_reason: str | None}`.
-  - `payments.gateways.MockBankingGateway(BankingGateway)` — `initiate_payment` always returns `status="completed"` with a generated reference (e.g. `f"MOCK-{uuid4().hex[:12].upper()}"`), simulating a real gateway's request/response shape without fake randomness (DECISIONS.md #7: "simulated delay/status" — the delay is architectural, not a fabricated failure chance; failures are demonstrated via test-only injection, not production randomness).
-  - `payments.gateways.get_gateway() -> BankingGateway` — reads `settings.BANKING_GATEWAY` (default `"mock"`) and returns the configured instance; this is the swap point DECISIONS.md #7 describes.
+  - `payments.gateways.MockBankingGateway(BankingGateway)` — `initiate_payment` always returns `status="completed"` with a generated reference (e.g. `f"MOCK-{uuid4().hex[:12].upper()}"`), simulating a real gateway's request/response shape without fake randomness. The simulated delay is architectural, not a fabricated failure chance; failures are demonstrated via test-only injection, not production randomness.
+  - `payments.gateways.get_gateway() -> BankingGateway` — reads `settings.BANKING_GATEWAY` (default `"mock"`) and returns the configured instance; this is the gateway swap point.
   - `payments.models.Payment(invoice FK→Invoice [OneToOne], amount, status ["processing","completed","failed"], gateway_reference, failure_reason, requested_by FK→User, requested_at, completed_at)`.
   - `POST /api/payments/` (body `{"invoice": <id>}`, `HasRole("ap_admin")`) — validates `invoice.status == Invoice.STATUS_APPROVED` and no existing `Payment` row for it, calls `get_gateway().initiate_payment(...)`, creates the `Payment` row, and on `status="completed"` sets `invoice.status = Invoice.STATUS_PAID`.
   - `GET /api/payments/` (`IsAuthenticated`) — list, for the payment-tracking dashboard/report.

@@ -9,9 +9,9 @@ Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + 
 | Requirement | Where |
 |---|---|
 | Source code (React + Django + PostgreSQL) | this repository |
-| Live deployment (added advantage) | Render — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Live deployment (added advantage) | Deployed on Render |
 | Database schema (tables + relationships) | [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) (ER diagram + per-table breakdown), raw dump at [docs/schema/schema.sql](docs/schema/schema.sql) |
-| Demo video | architecture, design decisions and a full feature walkthrough — recording script in [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md), ready-made test invoices in [docs/sample-invoices/](docs/sample-invoices/) |
+| Demo video | Architecture, design decisions and a full feature walkthrough, submitted separately. Ready-made test invoices for reproducing the walkthrough are in [docs/sample-invoices/](docs/sample-invoices/) |
 | Challenges and solutions | [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md) |
 
 ## The invoice journey, in plain words
@@ -26,14 +26,12 @@ Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + 
 8. When every step is approved the invoice is **Approved**; an AP Admin requests payment through the (mock) bank gateway and it becomes **Paid**.
 9. The dashboard and five reports (with CSV export) read from the same data.
 
-Full walkthrough with diagrams: [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
-
 ## Features by scope-doc module
 
 | Module | Status | Notes |
 |---|---|---|
 | Invoice capture | Real (manual upload) | PDF/PNG/JPG, extension and magic-byte checks. **Email (IMAP) ingestion is not built.** |
-| OCR extraction | Real | Tesseract (LSTM engine) via pytesseract + pdf2image/Poppler. Header-field extraction is deliberately regex, not an LLM; line-item extraction uses an LLM instead, on purpose (DECISIONS.md #4). Runs synchronously inside the upload request. |
+| OCR extraction | Real | Tesseract (LSTM engine) via pytesseract + pdf2image/Poppler. Header-field extraction is deliberately regex, not an LLM, for predictability; line-item extraction uses an LLM instead, as it cannot be reliably done with pattern matching. Runs synchronously inside the upload request. |
 | Line-item extraction | Real, LLM-based, best-effort | `invoices/llm_extraction.py` calls Google Gemini (free tier) with the OCR'd text for a structured JSON line-item list. Optional: does nothing if `GEMINI_API_KEY` isn't set, never blocks an upload if it fails. |
 | Validation engine | Real | Mandatory fields, GSTIN modulo-36 checksum, vendor master check, amount, duplicate detection; failures become exception rows. |
 | PO matching | Real | 2-way (PO vs invoice) and 3-way (PO vs GRN vs invoice), 1% tolerance. PO/GRN entered via CRUD or CSV import (no real ERP). |
@@ -97,7 +95,7 @@ cd frontend && npm run lint     # oxlint (currently a few warnings, no errors ex
 cd frontend && npm run build    # TypeScript check + production build
 ```
 
-There is no frontend test suite (DECISIONS.md #10). For manual QA use [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md). A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the same checks, but it has not yet been run.
+There is no frontend test suite; manual QA was performed against a structured test script during development. A GitHub Actions workflow (`.github/workflows/ci.yml`) runs the same checks, but it has not yet been run.
 
 ## Repo map
 
@@ -117,12 +115,8 @@ docs/          documentation (below)
 
 ## Documentation
 
-- [docs/APPLICATION_GUIDE.md](docs/APPLICATION_GUIDE.md): plain-English purpose, usage flow and edge cases — why each role exists, not how the code works
-- [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md): the recording script for the demo video — a presentation narrative, deliberately different from the QA-focused testing guide
-- [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md): lifecycle, roles, statuses, interview-defensible decisions
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, security, error handling, out of scope
-- [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md): manual QA script with expected results
-- [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md): real problems hit and fixed
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): deployment runbook — `render.yaml` is the path actually deployed (Render builds it; no local Docker needed); the Docker Compose path in the same doc was written but never built or run on the dev machine
+- [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md): real problems encountered during development and how each was resolved
+- [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md): ER diagram and per-table breakdown, raw dump at [docs/schema/schema.sql](docs/schema/schema.sql)
 - [docs/sample-invoices/](docs/sample-invoices/): three ready-made test PDFs (verified against the real OCR pipeline) for a fresh database, covering the happy path, PO tolerance matching, and the exceptions queue
-- [docs/DECISIONS.md](docs/DECISIONS.md), [docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md), [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md), [docs/superpowers/](docs/superpowers/) (specs and plans)
+- Engineering specifications and plans: [docs/2026-11-18-ap-automation-design.md](docs/2026-11-18-ap-automation-design.md), [docs/2026-11-19-frontend-redesign-design.md](docs/2026-11-19-frontend-redesign-design.md), [docs/2026-11-18-day1-scaffold-capture-ocr-validation.md](docs/2026-11-18-day1-scaffold-capture-ocr-validation.md), [docs/2026-11-19-day2-vendor-matching-workflow-notifications.md](docs/2026-11-19-day2-vendor-matching-workflow-notifications.md), [docs/2026-11-19-frontend-redesign.md](docs/2026-11-19-frontend-redesign.md), [docs/2026-11-20-day3-payments-dashboards-reports.md](docs/2026-11-20-day3-payments-dashboards-reports.md)

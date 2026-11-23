@@ -27,11 +27,11 @@ This is the frontend an interviewer will actually click through. It needs to loo
 
 1. **Minor polish only** (nicer colors, keep existing structure) — rejected: doesn't fix the structural problem (plain unstyled tables, no error taxonomy).
 2. **Full design system + systematic error handling** (chosen) — a token-based visual identity applied via a small set of shared components (Table, Toast, Banner, EmptyState, Skeleton, ErrorBoundary), plus a typed error-classification layer in the API client so every page handles 401/403/404/validation/network/500 distinctly.
-3. **Adopt a full external UI kit** (MUI, Ant Design) — rejected: contradicts DECISIONS.md #9's reasoning (shadcn's copy-in components were chosen specifically to avoid a heavy runtime dependency and the "obviously-default" look of a kit).
+3. **Adopt a full external UI kit** (MUI, Ant Design) — rejected: shadcn's copy-in components were chosen specifically to avoid a heavy runtime dependency and the "obviously-default" look of a kit.
 
 Chosen: **Approach 2**.
 
-## Visual direction (approved via a clickable preview, since deleted per request)
+## Visual direction
 
 **Grounding:** GST-compliant Accounts Payable software for Indian finance teams. The identity comes from the subject's own world — ledgers, invoice numbers, GSTINs, rupee amounts — not generic SaaS or generic fintech-bright.
 
@@ -63,8 +63,8 @@ Chosen: **Approach 2**.
 | Loading | Skeleton rows, never a blank screen |
 | Render crash | App-wide error boundary with a calm recovery screen ("Reload page"), not a white screen |
 
-## What's left to the builder
+## Open items
 
 - Exact component API for the shared Table/Toast/Banner/EmptyState/Skeleton/ErrorBoundary components.
 - Exact copy for every error state beyond the examples above.
-- Whether the toast system is a small hand-rolled context provider or a minimal dependency — builder's call, consistent with the "no heavy dependency" precedent (DECISIONS.md #9).
+- Whether the toast system is a small hand-rolled context provider or a minimal dependency, consistent with the "no heavy dependency" precedent.

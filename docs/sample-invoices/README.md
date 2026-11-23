@@ -1,11 +1,11 @@
-# Sample invoices for the demo
+# Sample Invoices
 
-Three ready-made test PDFs, generated so the real OCR pipeline reads them cleanly (verified against
-`invoices/ocr.py` + `invoices/extraction.py` directly, not just assumed). Use them with
-[docs/TESTING_GUIDE.md](../TESTING_GUIDE.md) on a freshly wiped database (only the 4 demo logins and
-the one approval rule exist — no vendors, invoices, POs or payments).
+This directory contains three test PDFs generated so that the OCR pipeline reads them cleanly
+(verified against `invoices/ocr.py` and `invoices/extraction.py` directly, rather than assumed). They
+are intended for use on a freshly wiped database (only the four demo logins and the one approval rule
+present — no vendors, invoices, purchase orders, or payments).
 
-## 1. `test-invoice-northwind.pdf` — the happy path
+## 1. `test-invoice-northwind.pdf` — Happy Path
 
 | Field | Value |
 |---|---|
@@ -15,12 +15,12 @@ the one approval rule exist — no vendors, invoices, POs or payments).
 | Vendor | Northwind Traders |
 | Amount | ₹24,500.00 |
 
-**Before uploading**, create a vendor (as `admin@demo.com`, on `/vendors`) with the exact GSTIN above —
-name/email/bank details can be anything. Then upload this file as `requester@demo.com`. It should land
-as **Validated** straight away (no PO needed for that status; link a PO first if you want to show the
-full match → approve → pay chain).
+A vendor must be created (as `admin@demo.com`, on `/vendors`) with the exact GSTIN shown above before
+this file is uploaded as `requester@demo.com`; name, email, and bank details may be arbitrary. The
+invoice is expected to reach **Validated** status immediately (no purchase order is required for this
+status; a purchase order should be linked first to demonstrate the full match → approve → pay chain).
 
-## 2. `test-invoice-stellar.pdf` — for PO matching / tolerance
+## 2. `test-invoice-stellar.pdf` — PO Matching and Tolerance
 
 | Field | Value |
 |---|---|
@@ -30,14 +30,16 @@ full match → approve → pay chain).
 | Vendor | Stellar Hardware Co |
 | Amount | ₹67,800.00 |
 
-Create a matching vendor (same GSTIN), then a purchase order for that vendor on `/purchase-orders`
-**before** uploading, so you can upload with the PO linked (via the API/curl, per scenario 6 in the
-testing guide — the upload form doesn't expose a PO picker):
+A matching vendor (same GSTIN) and a corresponding purchase order on `/purchase-orders` must be
+created before this file is uploaded, so that the upload can include the linked PO (via the API/curl,
+per scenario 6 in the testing guide — the upload form does not expose a PO picker):
 
-- PO total **₹68,000** (0.3% off) → within 1% tolerance → matched, goes to Pending Approval.
-- PO total **₹71,000** (~4.7% off) → over tolerance → mismatched, goes to Needs Review.
+- A PO total of **₹68,000** (0.3% variance) falls within the 1% tolerance, resulting in a match and
+  routing to Pending Approval.
+- A PO total of **₹71,000** (approximately 4.7% variance) exceeds tolerance, resulting in a mismatch
+  and routing to Needs Review.
 
-## 3. `test-invoice-incomplete.pdf` — for the exceptions queue
+## 3. `test-invoice-incomplete.pdf` — Exceptions Queue
 
 | Field | Value |
 |---|---|
@@ -47,7 +49,8 @@ testing guide — the upload form doesn't expose a PO picker):
 | Vendor | *(not present)* |
 | Amount | ₹12,340.00 |
 
-No vendor setup needed — upload it as-is. It lands in **Needs Review** with two real "Missing mandatory
-field" exceptions (GSTIN, vendor name), genuinely produced by the validation engine, not staged. Good
-for showing the exceptions queue, and (as AP Admin) the "Fix & revalidate" correction flow — type in a
-GSTIN/vendor name and watch it re-validate live.
+No vendor setup is required; this file can be uploaded as-is. It is expected to land in **Needs
+Review** with two "Missing mandatory field" exceptions (GSTIN, vendor name), produced by the
+validation engine rather than staged. This file is suited to demonstrating the exceptions queue and,
+as AP Admin, the "Fix & revalidate" correction flow, in which a GSTIN and vendor name are entered and
+the invoice is revalidated live.

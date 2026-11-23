@@ -1,6 +1,6 @@
 # Challenges and Solutions
 
-Real problems hit while building this, in plain terms. Each: symptom, root cause, fix, lesson. Source: the git history and review rounds.
+A record of real problems encountered during development of this project, with the symptom, root cause, fix, and lesson for each. Source: the project's git history and review rounds.
 
 ## a. Extraction ran past the end of the line
 
@@ -21,14 +21,14 @@ Real problems hit while building this, in plain terms. Each: symptom, root cause
 - **Symptom:** found in code review: anyone could register as `ap_admin`.
 - **Root cause:** the register serializer accepted `role` from the client.
 - **Fix:** the role is no longer client-controlled on self-registration.
-- **Lesson:** privilege escalation hides in "convenience" fields; review every writable field for who may set it.
+- **Lesson:** privilege escalation hides in "convenience" fields; every writable field should be reviewed for who is permitted to set it.
 
 ## d. Adding the vendor-master check silently broke the Day 1 end-to-end test
 
 - **Symptom:** after adding "vendor must exist in master", the earlier upload test failed.
 - **Root cause:** the test fixture had no matching vendor row; new validation changed what "valid" means.
 - **Fix:** gave the end-to-end test a matching vendor.
-- **Lesson:** a new rule ripples into old fixtures; run the whole suite after every rule, not only the new test.
+- **Lesson:** a new rule ripples into old fixtures; the full suite should run after every rule change, not only the new test.
 
 ## e. The exception queue flooded with "no PO" noise
 
@@ -42,7 +42,7 @@ Real problems hit while building this, in plain terms. Each: symptom, root cause
 - **Symptom:** found in review: after escalation the invoice stayed Pending Approval forever.
 - **Root cause:** the "are all steps done?" check only accepted approved steps, but the original step is marked escalated and a replacement step is created.
 - **Fix:** escalated steps count as resolved; the replacement step carries the decision.
-- **Lesson:** model every state in the final "is it finished?" condition.
+- **Lesson:** every state must be modeled in the final "is it finished?" condition.
 
 ## g. CSV import crashed on missing cells, BOM headers and NaN amounts
 
@@ -56,21 +56,21 @@ Real problems hit while building this, in plain terms. Each: symptom, root cause
 - **Symptom:** a duplicate of an already approved invoice was not flagged.
 - **Root cause:** the check only compared against invoices with status "validated".
 - **Fix:** compare against every invoice except rejected and needs-review ones.
-- **Lesson:** define "duplicate" by what you are protecting (paying twice), not by one convenient status.
+- **Lesson:** "duplicate" should be defined by the risk being protected against (paying twice), not by one convenient status.
 
 ## i. A real Clean Fanatics tax invoice and quotation exposed template variety
 
 - **Symptom:** labels like "Invoice No. :", "GSTIN-" and a bare "Total" were missed; an OCR misread of a colon broke another field.
 - **Root cause:** patterns were written against idealised sample text.
 - **Fix:** widened separators and labels. A quotation was correctly refused as not a tax invoice. Vendor-from-letterhead and OCR-misread dates were honestly left for manual review rather than guessed.
-- **Lesson:** test on real documents early, and document what you chose not to solve.
+- **Lesson:** real documents should be tested against early, and any deliberately unsolved cases should be documented explicitly.
 
 ## j. Leaky 409 toasts and no redirect on expired sessions
 
 - **Symptom:** a conflict toast showed "Step 42 is already approved"; an expired login left users stranded on a broken page.
 - **Root cause:** raw server text was shown to users; 401 had no handling.
 - **Fix:** typed `ApiError` kinds with fixed user wording per kind, and a redirect to login on unauthorized.
-- **Lesson:** decide the user-facing message in one place.
+- **Lesson:** the user-facing message should be decided in one place.
 
 ## k. Environment friction
 
@@ -104,19 +104,19 @@ Real problems hit while building this, in plain terms. Each: symptom, root cause
 
 Each step here was a distinct, real failure against the live API, not a hypothetical:
 
-1. **Wrong SDK.** `google-generativeai`, the package initially chosen, is itself fully deprecated by Google in favor of `google-genai` — only discovered by calling the real API and reading the deprecation warning, not from release notes.
-2. **Wrong provider, initially.** Anthropic (first choice) has no free tier; switched to Google Gemini, which does.
+1. **Wrong SDK.** `google-generativeai`, the package initially selected, is itself fully deprecated by Google in favor of `google-genai` — only discovered by calling the real API and reading the deprecation warning, not from release notes.
+2. **Wrong provider, initially.** The Anthropic API has no free tier; the integration was switched to Google Gemini, which does.
 3. **No request timeout, on a call inside a synchronous request.** `client.models.generate_content()` has no default timeout, and this call runs inside the invoice upload request — a stalled connection could hang the whole upload indefinitely. Caught by directly testing with a hard tool-level timeout and watching it actually hang past 45 seconds; fixed with an explicit 8s `HttpOptions` timeout.
 4. **The specific model name goes stale.** The exact model Google's own 404 error suggested (`gemini-3.8-flash`) was itself overloaded; later, `gemini-flash-latest` (the "safe alias" choice) was *also* overloaded. Five candidate models were tried directly against the live API before finding one (`gemini-flash-lite-latest`) that actually responded — confirmed by uploading a real invoice through the running app and getting correctly-parsed line items back in ~3 seconds, not by reading documentation and guessing.
 5. **Retry budget too generous for a live demo.** 3 attempts × 30s timeout + backoff meant a ~96-second worst case if Gemini was down — long enough to look exactly like a hung upload. Cut to 2 attempts × 8s (~17s worst case), and reordered the code so the invoice's real status/validation/matching result is saved *before* the optional line-item call runs, not interleaved with it.
-- **Lesson:** for a dependency on someone else's live service, "does it respond to a documented API" and "does it respond to *your* key, right now, for *your* prompt" are different questions — only the second one is testable without a working integration in front of you, and it kept giving different answers than the first.
+- **Lesson:** for a dependency on a third-party live service, "does it respond to the documented API" and "does it respond to the actual key, right now, for the actual prompt" are different questions — only the second is testable without a working integration already in place, and in this case it produced different answers than the first.
 
 ## p. A Render deploy worked, then the app couldn't be reached at all
 
 - **Symptom:** backend logs showed `django.core.exceptions.DisallowedHost`; after fixing that, the frontend's sign-in failed with a 404 on every API call.
 - **Root cause:** Render appends a random suffix to a service name on collision (`ap-automation-backend` became `ap-automation-backend-qxbs`), which didn't match the plain hostname baked into `render.yaml`'s `DJANGO_ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS`. Separately, the frontend's `VITE_API_BASE` is a Vite **build-time** variable — updating it in the Render dashboard does nothing until the next build, so the already-built JS kept calling the old, wrong hostname.
 - **Fix:** update the three backend env vars to the actual assigned hostname; update `VITE_API_BASE` *and* trigger a manual rebuild on the frontend service (not just save the env var).
-- **Lesson:** a platform assigning its own hostnames means any config written before first deploy is provisional; verify the *actual* URL, don't assume the one you planned for. Confirmed by watching real Render deploy logs and curling the live URLs afterward, not by assuming the dashboard save was enough.
+- **Lesson:** a platform assigning its own hostnames means any config written before first deploy is provisional; the actual URL should be verified rather than assumed from the plan. Confirmed by inspecting real Render deploy logs and querying the live URLs afterward, rather than assuming the dashboard save was sufficient.
 
 ## q. The deployed app never actually started "fresh"
 

@@ -1,14 +1,12 @@
 # Frontend Redesign Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Replace the bare default-shadcn frontend with the "ledger register" visual identity from the approved design doc, and give every page a systematic, typed error-handling layer (distinct 401/403/400/404/network/500 treatment, toasts, loading skeletons, empty states, double-submit guards, an app-wide crash boundary) instead of today's uniform `catch { setError('generic message') }`.
 
 **Architecture:** A token-based design system in `index.css` (light + dark, per the design doc) feeds a small set of shared primitives (`Table`, `Badge`, `Button`, `Input`, `Toast`, `Banner`, `EmptyState`, `Skeleton`, `ErrorBoundary`). A new `ApiError` class in `lib/api.ts` classifies every failed request once, at the fetch layer, so every page branches on `error.kind` instead of re-guessing what went wrong. Pages are rebuilt on top of these primitives in the same order they were originally built (Login → Invoices → Vendors/POs → Approvals/Notifications).
 
-**Tech Stack:** Existing stack only — React 19 + TypeScript + Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`) + `lucide-react` (already a dependency, unused so far) for icons. No new dependencies — consistent with DECISIONS.md #9's reasoning against a heavy UI runtime.
+**Tech Stack:** Existing stack only — React 19 + TypeScript + Tailwind CSS v4 (CSS-first config, no `tailwind.config.js`) + `lucide-react` (already a dependency, unused so far) for icons. No new dependencies, consistent with the decision against a heavy UI runtime dependency.
 
-**Spec:** `docs/superpowers/specs/2026-11-19-frontend-redesign-design.md` (approved design doc — color/type/layout tokens, error-handling treatment table).
+**Spec:** `docs/2026-11-19-frontend-redesign-design.md` (approved design document — color/type/layout tokens, error-handling treatment table).
 
 ## Global Constraints
 
@@ -16,7 +14,7 @@
 - No new npm dependencies.
 - Both light and dark themes must work (tokens defined in both `prefers-color-scheme: dark` and `[data-theme="dark"]`, per the design doc).
 - Every currency/ID column uses `font-variant-numeric: tabular-nums` (already specified in the design doc).
-- No frontend automated test suite exists or is being added (per DECISIONS.md #10) — each task's verification is `npm run build` (type-check) plus a manual check against the real running backend, same pattern as Day 2 Tasks 8–9.
+- No frontend automated test suite exists or is being added — each task's verification is `npm run build` (type-check) plus a manual check against the real running backend, same pattern as Day 2 Tasks 8–9.
 - Keep existing routes, existing role-based page visibility (none — Day 2's Task 8 ruling already established that nav links are shown to all authenticated users, server-enforced), and existing API functions in `lib/api.ts` — this plan changes how errors from them are classified and rendered, not what they call.
 
 ## Review Focus
@@ -268,4 +266,4 @@ Expected: clean build.
 - [ ] **Step 2: Start both dev servers** and walk every page in both light and dark mode: Login, Invoices, Vendors, Purchase Orders, Approvals, the notification bell.
 - [ ] **Step 3: Deliberately trigger each error-handling row from the design doc's table** at least once against the real backend: 401 (let a token expire or log out mid-session), 403 (wrong-role action), 400/validation (bad form input), 404/empty (fresh data with nothing in it), network/500 (stop the backend mid-session), a forced render error (temporarily throw in a component to confirm the `ErrorBoundary` catches it, then revert that throw — this is a verification-only change, never committed).
 Expected: each produces the specific, distinct treatment from the design doc — not a shared fallback.
-- [ ] **Step 4: Commit** (only if any small fixes were needed during this pass; otherwise this task produces no commit, just a clean bill of health reported to the human partner).
+- [ ] **Step 4: Commit** (only if any small fixes were needed during this pass; otherwise this task produces no commit, just a clean bill of health recorded against this plan).

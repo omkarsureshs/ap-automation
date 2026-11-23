@@ -30,7 +30,7 @@ feature coverage.
 
 - Native mobile app (responsive web satisfies "mobile approval support").
 - Real bank/ERP integration (explicitly out of reach in a take-home).
-- LLM-based field extraction (regex-only, by decision — see Decisions Log).
+- LLM-based field extraction (regex-only, by decision).
 - Frontend automated test suite (manual verification + demo video instead).
 - PWA installability.
 
@@ -38,7 +38,7 @@ feature coverage.
 
 - Fake integrations presented as real (e.g., a banking call that silently no-ops).
 - Shallow stub modules that don't actually run the logic they claim to.
-- Code the builder (you) can't personally explain in the demo video.
+- Code that cannot be explained in the demo video.
 
 ## Constraints
 
@@ -58,7 +58,7 @@ feature coverage.
 3. **Narrow and polished** — pick 3-4 modules, skip the rest. Rejected: the scope
    doc is explicit and itemized; partial coverage reads as not having read it.
 
-Chosen: **Approach 2**, confirmed by the project owner.
+Chosen: **Approach 2**.
 
 ## Architecture
 
@@ -71,8 +71,8 @@ Chosen: **Approach 2**, confirmed by the project owner.
 - **OCR:** Tesseract (`pytesseract` + `pdf2image`/`pdfplumber`) run server-side on
   upload. Preprocessing: grayscale + binarization, `--psm 6` for block text.
 - **Field extraction:** regex + positional heuristics, anchored with word
-  boundaries. Deliberately not LLM-based (see Decisions Log for the reasoning and
-  how to describe this honestly in interviews).
+  boundaries. Deliberately not LLM-based, for predictability, offline operation,
+  and testability.
 - **Validation engine:** separate layer from extraction — mandatory field checks,
   duplicate detection, GST/GSTIN checksum validation, amount format validation,
   vendor master cross-check. Low-confidence/failed fields route to an **exceptions
@@ -120,11 +120,11 @@ Chosen: **Approach 2**, confirmed by the project owner.
    tests, README + challenges writeup, demo video. Email-IMAP-ingestion polish
    and Render deployment are the first things cut if time runs short.
 
-## What's left to the builder
+## Open items
 
-- Exact DB schema / migrations (to be captured as its own deliverable per
+- Exact DB schema / migrations (captured as its own deliverable per
   submission requirements).
 - Exact regex patterns per field and exception-queue UX details.
-- Exact escalation timing defaults (should be admin-configurable, not hardcoded).
-- Demo video script and "Challenges and Solutions" writeup content — draw from the
-  real issues hit during the 3 days, not generic filler.
+- Exact escalation timing defaults (admin-configurable, not hardcoded).
+- Demo video script and "Challenges and Solutions" writeup content — drawn from the
+  real issues encountered during development, not generic filler.

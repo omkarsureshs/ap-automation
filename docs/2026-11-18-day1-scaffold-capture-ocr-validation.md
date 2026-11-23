@@ -1,26 +1,24 @@
 # Day 1: Scaffold, Auth, Capture, OCR, Extraction, Validation — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Stand up the Django+DRF+Postgres backend and React+TS+Tailwind frontend scaffold, JWT auth with 4 roles, invoice upload capture, real Tesseract OCR, regex field extraction, and a validation engine that routes bad invoices to an exceptions queue — the full Day 1 slice from `docs/DECISIONS.md` and the design doc, end to end and demoable.
+**Goal:** Stand up the Django+DRF+Postgres backend and React+TS+Tailwind frontend scaffold, JWT auth with 4 roles, invoice upload capture, real Tesseract OCR, regex field extraction, and a validation engine that routes bad invoices to an exceptions queue — the full Day 1 slice from the design doc, end to end and demoable.
 
 **Architecture:** Django project `backend/` with two apps: `accounts` (custom User + role + JWT) and `invoices` (Invoice model, upload, OCR, extraction, validation, exceptions). A separate `frontend/` Vite React TS app with Tailwind + shadcn/ui, talking to the DRF API over JWT. Postgres via docker-compose for local dev. OCR and extraction are plain service modules (no Celery/async queue — synchronous on upload, per the 3-day time budget), called directly from the upload view; a later day can move this to a background task without changing the module boundary.
 
 **Tech Stack:** Django 5 + djangorestframework + djangorestframework-simplejwt + psycopg + pytesseract + pdf2image + Pillow; pytest-django; React 18 + TypeScript + Vite + Tailwind CSS + shadcn/ui; Postgres 16 in Docker.
 
-**Spec:** `docs/superpowers/specs/2026-11-18-ap-automation-design.md` (architecture, OCR/extraction/validation sections, build sequence #1), with reasoning in `docs/DECISIONS.md` (#3 auth/roles, #4 OCR engine, #14 encryption — not yet needed Day 1).
+**Spec:** `docs/2026-11-18-ap-automation-design.md` (architecture, OCR/extraction/validation sections, build sequence #1).
 
 ## Global Constraints
 
 - Stack is non-negotiable: ReactJS, Django, PostgreSQL (spec Constraints).
 - OCR must run fully offline, no paid APIs, no external credentials required at demo time (spec Constraints).
-- 4 roles on the user profile: `Requester`, `Approver`, `AP Admin`, `Vendor`; JWT auth via `djangorestframework-simplejwt`, no SSO (DECISIONS #3).
+- 4 roles on the user profile: `Requester`, `Approver`, `AP Admin`, `Vendor`; JWT auth via `djangorestframework-simplejwt`, no SSO.
 - OCR: `pytesseract`/`pdf2image`, preprocessing = grayscale + binarization, `--psm 6` for block text (spec Architecture).
-- Field extraction: regex + positional heuristics only, anchored with word boundaries — no LLM, no cloud vision API (spec Architecture, DECISIONS #4). Named capture groups (`(?P<field>...)`), `re.compile` with bounded/non-greedy patterns to avoid catastrophic backtracking (STUDY_GUIDE #1).
+- Field extraction: regex + positional heuristics only, anchored with word boundaries — no LLM, no cloud vision API (spec Architecture). Named capture groups (`(?P<field>...)`), `re.compile` with bounded/non-greedy patterns to avoid catastrophic backtracking.
 - Validation is a separate layer from extraction: mandatory field checks, duplicate detection, GST/GSTIN checksum validation, amount format validation; failures go to an exceptions/manual-review queue, never silently through (spec Architecture).
-- GSTIN: 15 chars — 2-digit state code + 10-char PAN + 1 entity code + default `'Z'` + 1 checksum digit, modulo-36 check-digit algorithm (STUDY_GUIDE #3).
-- Frontend stack: React + TypeScript + Tailwind + shadcn/ui (copy-in, not an installed library) (DECISIONS #9).
-- Testing: pytest-django unit tests on validation engine and (later) matching/approval; no frontend test suite (DECISIONS #10).
+- GSTIN: 15 chars — 2-digit state code + 10-char PAN + 1 entity code + default `'Z'` + 1 checksum digit, modulo-36 check-digit algorithm.
+- Frontend stack: React + TypeScript + Tailwind + shadcn/ui (copy-in, not an installed library).
+- Testing: pytest-django unit tests on validation engine and (later) matching/approval; no frontend test suite.
 
 ## Review Focus
 
@@ -333,7 +331,7 @@ Expected: FAIL (`extract_fields` not defined)
 
 - [ ] **Step 3: Implement `extract_fields` in `backend/invoices/extraction.py`**
 
-One `re.compile` per field with named groups, each anchored at a label (`\bInvoice\s*No\b`, `\bGSTIN\b`, `\bTotal\s*Amount\b`, `\bInvoice\s*Date\b`, `\bVendor\b`), non-greedy up to end of line, no nested quantifiers (STUDY_GUIDE #1's catastrophic-backtracking warning). Return `None` per field when its pattern doesn't match.
+One `re.compile` per field with named groups, each anchored at a label (`\bInvoice\s*No\b`, `\bGSTIN\b`, `\bTotal\s*Amount\b`, `\bInvoice\s*Date\b`, `\bVendor\b`), non-greedy up to end of line, no nested quantifiers (to avoid catastrophic backtracking). Return `None` per field when its pattern doesn't match.
 
 - [ ] **Step 4: Wire extraction into the upload view**
 

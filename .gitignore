@@ -26,3 +26,12 @@ dist/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Internal docs kept locally for reference, not published to the repository
+/docs/APPLICATION_GUIDE.md
+/docs/DECISIONS.md
+/docs/DEMO_VIDEO_SCRIPT.md
+/docs/DEPLOYMENT.md
+/docs/HOW_IT_WORKS.md
+/docs/STUDY_GUIDE.md
+/docs/TESTING_GUIDE.md

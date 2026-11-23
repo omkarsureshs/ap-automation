@@ -57,9 +57,9 @@ The backend returns standard HTTP status codes. `frontend/src/lib/api.ts` classi
 
 ## Deliberately out of scope
 
-- **IMAP email ingestion:** planned in DECISIONS.md #6 but not built. Invoices enter by manual upload only.
+- **IMAP email ingestion:** planned but not built. Invoices enter by manual upload only.
 - **Background workers (Celery):** OCR runs inside the request. Simpler and deterministic for a demo, but a slow file blocks a gunicorn worker. The upgrade is a task queue plus a "processing" status.
 - **Real bank and ERP:** payments go to a mock; POs and GRNs are entered by CRUD/CSV, not synced.
 - **Fix-and-resubmit flow** for Needs Review invoices, and a route to approval for invoices without a PO.
 - **PDF report export** (CSV only), native mobile app (responsive web only), frontend test suite.
-- **Object storage for uploads:** files sit on local disk (see DEPLOYMENT.md).
+- **Object storage for uploads:** files sit on local disk rather than object storage (e.g. S3-compatible storage).

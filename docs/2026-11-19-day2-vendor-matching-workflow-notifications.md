@@ -1,22 +1,20 @@
 # Day 2: Vendor Management, PO/GRN Matching, Approval Workflow, Notifications Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
-**Goal:** Add vendor master management (encrypted bank details), an internal PO/GRN module with CSV bulk import, 2-way/3-way invoice matching, a configurable approval workflow with escalation, and dual-channel (in-app + email) notifications — the full Day 2 slice from `docs/DECISIONS.md` and the design doc.
+**Goal:** Add vendor master management (encrypted bank details), an internal PO/GRN module with CSV bulk import, 2-way/3-way invoice matching, a configurable approval workflow with escalation, and dual-channel (in-app + email) notifications — the full Day 2 slice from the design doc.
 
 **Architecture:** Three new Django apps (`vendors`, `procurement`, `workflow`), each following the existing `accounts`/`invoices` pattern (models → serializers → views → urls, `HasRole` for permissions, pytest-django for tests). `Invoice` gains a nullable `purchase_order` FK and match-result fields. Matching and approval are pure functions/services called from view actions, mirroring how `invoices/validation.py` is called from `perform_create` today — same separation of "data layer" from "decision layer."
 
 **Tech Stack:** Django 5 + DRF (existing), `cryptography` (Fernet) for field-level encryption, Python `csv` stdlib for bulk import (no new dependency), Django's `django.core.mail` for notification email (console backend in dev), a custom `manage.py` command for escalation (run manually/via cron, no Celery). React 18 + TS + existing component library for new pages.
 
-**Spec:** `docs/superpowers/specs/2026-11-18-ap-automation-design.md` (Architecture section: vendor bank details, PO/GRN matching, approval workflow, invoice capture/notifications), with reasoning in `docs/DECISIONS.md` (#5 PO/GRN source, #13 notifications, #14 encryption, #15 build sequence/Day 2 scope, #128-equivalent escalation-configurable note in the design doc's "What's left to the builder").
+**Spec:** `docs/2026-11-18-ap-automation-design.md` (Architecture section: vendor bank details, PO/GRN matching, approval workflow, invoice capture/notifications; the escalation-configurable note is under "Open items").
 
 ## Global Constraints
 
 - Mandatory stack unchanged: Django + DRF + PostgreSQL backend, React+TS frontend (per design doc Constraints).
-- Vendor bank account number is encrypted at the field level in Postgres and returned masked (last 4 digits only) in API responses to every role except `ap_admin` (DECISIONS.md #14).
-- No real bank/ERP integration — PO/GRN data is sourced from an internal CRUD+CSV-import module, not an external system (DECISIONS.md #5).
+- Vendor bank account number is encrypted at the field level in Postgres and returned masked (last 4 digits only) in API responses to every role except `ap_admin`.
+- No real bank/ERP integration — PO/GRN data is sourced from an internal CRUD+CSV-import module, not an external system.
 - Escalation timing is admin-configurable per approval rule, never hardcoded as a constant (design doc "What's left to the builder").
-- Notifications go out on both channels — DB-backed in-app notification and real SMTP-capable email via Django's email backend — for the same event, not one or the other (DECISIONS.md #13).
+- Notifications go out on both channels — DB-backed in-app notification and real SMTP-capable email via Django's email backend — for the same event, not one or the other.
 - No paid APIs / no external credentials required at demo time (design doc Constraints) — email defaults to Django's console backend in dev, SMTP only if env vars are set.
 - Follow existing patterns: `HasRole(*roles)` for permission checks, pytest-django + DRF `APIClient` for tests, TDD RED→GREEN→commit per task.
 
@@ -311,7 +309,7 @@ git commit -m "feat: escalate_pending_approvals management command"
 - Modify: `backend/workflow/models.py` (add `Notification`), `backend/workflow/migrations/`, `backend/workflow/services.py` (call `notify` from `start_approval`), `backend/workflow/management/commands/escalate_pending_approvals.py` (call `notify` on escalation), `backend/workflow/views.py`/`urls.py` (notification list/mark-read endpoints), `backend/apconfig/settings.py` (`EMAIL_BACKEND`, `DEFAULT_FROM_EMAIL`, SMTP env vars)
 
 **Interfaces:**
-- Produces: `workflow.models.Notification(recipient FK→User, message, is_read [default False], created_at)`; `workflow.notifications.notify(user: User, message: str) -> Notification` — creates the `Notification` row and calls `django.core.mail.send_mail` to `user.email` with the same message (both channels, same call, per DECISIONS.md #13). `GET /api/workflow/notifications/?unread=true`, `POST /api/workflow/notifications/<id>/mark-read/`.
+- Produces: `workflow.models.Notification(recipient FK→User, message, is_read [default False], created_at)`; `workflow.notifications.notify(user: User, message: str) -> Notification` — creates the `Notification` row and calls `django.core.mail.send_mail` to `user.email` with the same message (both channels, same call). `GET /api/workflow/notifications/?unread=true`, `POST /api/workflow/notifications/<id>/mark-read/`.
 - Consumes: `workflow.models.ApprovalStep` (Task 5/6).
 
 - [ ] **Step 1: Write failing tests**
