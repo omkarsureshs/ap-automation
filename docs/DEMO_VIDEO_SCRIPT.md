@@ -113,22 +113,39 @@ something visual.
 > Needs Review for exactly that reason — not guessed, not auto-created. As AP Admin, I add the
 > vendor properly."
 
-**[SHOW]** Go back to Invoices (or refresh) — the invoice is now **Validated**.
-
-### 4c. Link a purchase order and show matching
-
-**[SHOW]** Create a Purchase Order for Northwind Traders with a total close to the invoice amount
-(within 1%). Either link it through the UI if available, or narrate the `curl` step from
-`docs/TESTING_GUIDE.md` scenario 6 briefly without dwelling on the command syntax on screen.
+**[SHOW]** Go back to Invoices. The invoice is still sitting in **Needs Review** — adding the vendor
+alone doesn't retroactively re-check anything already uploaded. Click **"Fix & revalidate"** on that
+row and click **"Save & revalidate"** (the fields are already correct, so nothing needs changing — this
+just re-runs the check now that the vendor exists). It flips to **Validated**.
 
 **[SAY]**
-> "Once it's tied to a purchase order, the system checks the invoice amount against what was actually
-> ordered — within a 1% tolerance, because real invoices are almost never an exact match. Clean match,
-> and it moves straight into the approval queue."
+> "Adding the vendor on its own doesn't reach back and fix this invoice — the system re-checks on
+> request, not automatically, so nothing changes state behind your back. One click to re-run the
+> check, and it's Validated. Since this invoice has no purchase order attached, it stops right here —
+> that's deliberate: there's nothing to match or route approval against without one."
+
+### 4c. A second invoice, linked to a purchase order, to show matching and approval
+
+**[SAY]**
+> "To show the full match-approve-pay chain, I'll bring in a second invoice — one that's tied to a
+> purchase order from the moment it's uploaded, since that's how this system links the two."
+
+**[SHOW]** As admin, add vendor "Stellar Hardware Co" with GSTIN `27STLHW5678Q1Z7` (from
+`docs/sample-invoices/README.md`), then import a one-row PO CSV for that vendor with a total within 1%
+of ₹67,800 (e.g. ₹68,000) via Purchase Orders → the CSV import button. Then upload
+`docs/sample-invoices/test-invoice-stellar.pdf` with that PO already linked — narrate the one `curl`
+call from `docs/TESTING_GUIDE.md` scenario 6 briefly, without dwelling on the syntax on screen (the
+upload form itself has no PO picker, by design — POs are entered in bulk via CSV, not hand-picked per
+invoice).
+
+**[SAY]**
+> "Because it's tied to a purchase order from upload, the system checks the invoice amount against
+> what was actually ordered — within a 1% tolerance, because real invoices are almost never an exact
+> match. Clean match, and it moves straight into the approval queue."
 
 ### 4d. Approver decides
 
-**[SHOW]** Switch to `approver@demo.com`. Open Approvals. Approve the invoice.
+**[SHOW]** Switch to `approver@demo.com`. Open Approvals. Approve the Stellar invoice.
 
 **[SAY]**
 > "The approver is a different person than the one who requested it, by design — that's the actual
@@ -164,8 +181,8 @@ invoice.
 > "Nothing crashes, nothing silently disappears — it's flagged, and it tells you exactly what's
 > wrong."
 
-**[SHOW]** Switch to `admin@demo.com`, click "Fix & revalidate" on that row, type in a GSTIN and
-vendor name, save.
+**[SHOW]** Switch to `admin@demo.com`, click "Fix & revalidate" on that row, type in `29NWTRA1234P1ZL`
+and "Northwind Traders" (the vendor from step 4b, already on file), save.
 
 **[SAY]**
 > "An AP Admin can correct just the field that was misread and the system re-validates live — no
