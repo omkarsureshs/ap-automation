@@ -11,7 +11,7 @@ Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + 
 | Source code (React + Django + PostgreSQL) | this repository |
 | Live deployment (added advantage) | Render — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Database schema (tables + relationships) | [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) (ER diagram + per-table breakdown), raw dump at [docs/schema/schema.sql](docs/schema/schema.sql) |
-| Demo video | architecture, design decisions and a full feature walkthrough — script in [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md), ready-made test invoices in [docs/sample-invoices/](docs/sample-invoices/) |
+| Demo video | architecture, design decisions and a full feature walkthrough — recording script in [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md), ready-made test invoices in [docs/sample-invoices/](docs/sample-invoices/) |
 | Challenges and solutions | [docs/CHALLENGES_AND_SOLUTIONS.md](docs/CHALLENGES_AND_SOLUTIONS.md) |
 
 ## The invoice journey, in plain words
@@ -117,6 +117,8 @@ docs/          documentation (below)
 
 ## Documentation
 
+- [docs/APPLICATION_GUIDE.md](docs/APPLICATION_GUIDE.md): plain-English purpose, usage flow and edge cases — why each role exists, not how the code works
+- [docs/DEMO_VIDEO_SCRIPT.md](docs/DEMO_VIDEO_SCRIPT.md): the recording script for the demo video — a presentation narrative, deliberately different from the QA-focused testing guide
 - [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md): lifecycle, roles, statuses, interview-defensible decisions
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): components, security, error handling, out of scope
 - [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md): manual QA script with expected results
