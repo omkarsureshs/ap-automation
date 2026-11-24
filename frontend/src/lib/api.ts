@@ -280,6 +280,15 @@ export async function deleteInvoice(id: number): Promise<void> {
   return handleNoContentResponse(resp)
 }
 
+export async function linkInvoiceToPurchaseOrder(id: number, purchaseOrderId: number): Promise<Invoice> {
+  const resp = await authedFetch(`/api/invoices/${id}/link-po/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ purchase_order: purchaseOrderId }),
+  })
+  return handleJsonResponse(resp)
+}
+
 export interface Vendor {
   id: number
   name: string

@@ -16,10 +16,22 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
-import { ApiError, correctInvoice, deleteInvoice, getCurrentUser, listInvoices, uploadInvoice, type Invoice } from '@/lib/api'
+import {
+  ApiError,
+  correctInvoice,
+  deleteInvoice,
+  getCurrentUser,
+  linkInvoiceToPurchaseOrder,
+  listInvoices,
+  listPurchaseOrders,
+  uploadInvoice,
+  type Invoice,
+  type PurchaseOrder,
+} from '@/lib/api'
 import { useSort } from '@/lib/sort'
 
 const DELETABLE_STATUSES = new Set(['uploaded', 'extracted', 'needs_review'])
+const PO_LINKABLE_STATUSES = new Set(['validated', 'needs_review'])
 
 function loadErrorMessageFor(err: unknown): string {
   if (err instanceof ApiError) {
@@ -123,6 +135,89 @@ function CorrectionForm({
   )
 }
 
+function linkPoErrorMessageFor(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.kind === 'forbidden') {
+      return "You don't have access to link a purchase order. That's limited to AP Admins."
+    }
+    return err.message
+  }
+  return 'Something went wrong. Try again.'
+}
+
+function LinkPurchaseOrderForm({
+  invoice,
+  purchaseOrders,
+  onDone,
+  onCancel,
+}: {
+  invoice: Invoice
+  purchaseOrders: PurchaseOrder[]
+  onDone: (updated: Invoice) => void
+  onCancel: () => void
+}) {
+  const [poId, setPoId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { show } = useToast()
+
+  async function handleLink() {
+    if (!poId) return
+    setSaving(true)
+    try {
+      const updated = await linkInvoiceToPurchaseOrder(invoice.id, Number(poId))
+      show({
+        title: updated.status === 'pending_approval' ? 'Matched — sent for approval' : 'Linked — still needs review',
+        description: `New status: ${updated.status}`,
+        variant: 'success',
+      })
+      onDone(updated)
+    } catch (err) {
+      show({ title: "Couldn't link purchase order", description: linkPoErrorMessageFor(err), variant: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 flex flex-col gap-2 rounded-md border border-hairline bg-secondary/30 p-3">
+      {purchaseOrders.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          No purchase orders on file yet — import one on the Purchase Orders page first.
+        </p>
+      ) : (
+        <label className="flex items-center gap-2 text-xs">
+          <span className="w-40 shrink-0 text-muted-foreground">Purchase order</span>
+          <select
+            value={poId}
+            onChange={(e) => setPoId(e.target.value)}
+            className="w-full rounded-md border border-hairline bg-background px-2 py-1 text-xs"
+          >
+            <option value="">Select a purchase order…</option>
+            {purchaseOrders.map((po) => (
+              <option key={po.id} value={po.id}>
+                {po.po_number} — ₹{po.total_amount}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      <div className="flex gap-2">
+        <Button type="button" onClick={handleLink} loading={saving} disabled={!poId}>
+          Link &amp; match
+        </Button>
+        <Button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="bg-transparent text-foreground ring-1 ring-inset ring-hairline hover:bg-secondary/60"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 function LineItemsPreview({ items }: { items: NonNullable<Invoice['line_items']> }) {
   return (
     <table className="mt-1 w-full max-w-sm border-collapse text-left text-xs">
@@ -148,9 +243,11 @@ function LineItemsPreview({ items }: { items: NonNullable<Invoice['line_items']>
 
 export function UploadPage() {
   const [invoices, setInvoices] = useState<Invoice[] | null>(null)
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [uploading, setUploading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [linkingPoId, setLinkingPoId] = useState<number | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [expandedLineItemsId, setExpandedLineItemsId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -169,6 +266,9 @@ export function UploadPage() {
 
   useEffect(() => {
     refresh()
+    if (isAdmin) {
+      listPurchaseOrders().then(setPurchaseOrders).catch(() => {})
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -347,6 +447,29 @@ export function UploadPage() {
                                 className="text-xs font-medium text-primary underline underline-offset-2"
                               >
                                 Fix &amp; revalidate
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {isAdmin && !invoice.purchase_order && PO_LINKABLE_STATUSES.has(invoice.status) && (
+                          <div className="mt-1">
+                            {linkingPoId === invoice.id ? (
+                              <LinkPurchaseOrderForm
+                                invoice={invoice}
+                                purchaseOrders={purchaseOrders}
+                                onCancel={() => setLinkingPoId(null)}
+                                onDone={(updated) => {
+                                  setInvoices((prev) => prev?.map((i) => (i.id === updated.id ? updated : i)) ?? prev)
+                                  setLinkingPoId(null)
+                                }}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setLinkingPoId(invoice.id)}
+                                className="text-xs font-medium text-primary underline underline-offset-2"
+                              >
+                                Link to purchase order
                               </button>
                             )}
                           </div>

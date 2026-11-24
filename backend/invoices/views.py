@@ -7,7 +7,7 @@ from invoices.extraction import extract_fields
 from invoices.llm_extraction import extract_line_items
 from invoices.models import Invoice, InvoiceException, InvoiceLineItem
 from invoices.ocr import OcrError, run_ocr
-from invoices.serializers import InvoiceCorrectionSerializer, InvoiceSerializer
+from invoices.serializers import InvoiceCorrectionSerializer, InvoiceLinkPurchaseOrderSerializer, InvoiceSerializer
 from invoices.validation import validate_invoice
 from procurement.matching import match_invoice
 from workflow.services import start_approval
@@ -125,6 +125,43 @@ class InvoiceCorrectionView(generics.UpdateAPIView):
             raise ValidationError(
                 {"status": [f"Only invoices in needs_review can be corrected (current status: {invoice.status})."]}
             )
+        serializer = self.get_serializer(invoice, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        invoice = serializer.save()
+        invoice.exceptions.all().delete()
+        invoice.match_status = Invoice.MATCH_STATUS_UNMATCHED
+        _validate_and_match(invoice)
+        invoice.save()
+        return Response(InvoiceSerializer(invoice).data)
+
+
+_PO_LINKABLE_STATUSES = (Invoice.STATUS_VALIDATED, Invoice.STATUS_NEEDS_REVIEW)
+
+
+class InvoiceLinkPurchaseOrderView(generics.UpdateAPIView):
+    """AP Admin attaches a purchase order to an invoice that was uploaded without one.
+
+    Purchase orders are normally linked at upload time (the upload form has no PO
+    picker, by design — POs are entered in bulk via CSV import, not guessed at per
+    invoice). This covers the case where the right PO wasn't on file yet, or simply
+    wasn't linked, and the invoice hasn't moved past Validated/Needs Review — i.e.
+    nothing has been approved or paid against it yet. Re-runs validation and matching
+    so the invoice reaches the same outcome it would have at upload time.
+    """
+
+    queryset = Invoice.objects.all()
+    serializer_class = InvoiceLinkPurchaseOrderSerializer
+    permission_classes = [HasRole("ap_admin")]
+    http_method_names = ["patch"]
+
+    def update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        if invoice.status not in _PO_LINKABLE_STATUSES:
+            raise ValidationError(
+                {"detail": f"Can only link a purchase order while Validated or Needs Review (current status: {invoice.status})."}
+            )
+        if invoice.purchase_order is not None:
+            raise ValidationError({"detail": "This invoice is already linked to a purchase order."})
         serializer = self.get_serializer(invoice, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         invoice = serializer.save()

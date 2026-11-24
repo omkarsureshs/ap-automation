@@ -70,3 +70,12 @@ class InvoiceCorrectionSerializer(serializers.ModelSerializer):
             "extracted_invoice_no", "extracted_invoice_date", "extracted_gstin",
             "extracted_total_amount", "extracted_vendor_name",
         ]
+
+
+class InvoiceLinkPurchaseOrderSerializer(serializers.ModelSerializer):
+    """Lets an AP Admin attach a purchase order to an invoice uploaded without one."""
+
+    class Meta:
+        model = Invoice
+        fields = ["purchase_order"]
+        extra_kwargs = {"purchase_order": {"required": True, "allow_null": False}}
