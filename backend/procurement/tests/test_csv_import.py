@@ -20,6 +20,18 @@ def _csv_file(name, content):
     return SimpleUploadedFile(name, content.encode(), content_type="text/csv")
 
 
+def test_import_purchase_orders_csv_accepts_thousands_separator_commas(db, vendor):
+    csv_content = (
+        "po_number,vendor_gstin,total_amount\n"
+        'PO-3100,27AAACC1206D1ZG,"68,000.00"\n'
+    )
+    result = import_purchase_orders_csv(_csv_file("pos.csv", csv_content))
+    assert result["created"] == 1
+    assert result["errors"] == []
+    po = PurchaseOrder.objects.get(po_number="PO-3100")
+    assert po.total_amount == 68000
+
+
 def test_import_purchase_orders_csv_creates_rows_and_reports_errors(db, vendor):
     csv_content = (
         "po_number,vendor_gstin,total_amount\n"

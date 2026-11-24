@@ -36,11 +36,38 @@ def test_requester_cannot_create_vendor(auth_client_requester):
 
 def test_ap_admin_can_create_vendor(auth_client_ap_admin):
     resp = auth_client_ap_admin.post("/api/vendors/", {
-        "name": "New Vendor", "gstin": "29AABCU9603R1ZM", "email": "x@x.test",
+        "name": "New Vendor", "gstin": "29AABCU9603R1ZJ", "email": "x@x.test",
         "bank_account_number": "111222333", "bank_ifsc": "ICIC0001234",
     })
     assert resp.status_code == 201
-    assert Vendor.objects.filter(gstin="29AABCU9603R1ZM").exists()
+    assert Vendor.objects.filter(gstin="29AABCU9603R1ZJ").exists()
+
+
+def test_ap_admin_cannot_create_vendor_with_invalid_gstin(auth_client_ap_admin):
+    resp = auth_client_ap_admin.post("/api/vendors/", {
+        "name": "New Vendor", "gstin": "29AABCU9603R1ZM", "email": "x@x.test",
+        "bank_account_number": "111222333", "bank_ifsc": "ICIC0001234",
+    })
+    assert resp.status_code == 400
+    assert "gstin" in resp.json()
+
+
+def test_ap_admin_cannot_create_vendor_with_invalid_ifsc(auth_client_ap_admin):
+    resp = auth_client_ap_admin.post("/api/vendors/", {
+        "name": "New Vendor", "gstin": "29AABCU9603R1ZJ", "email": "x@x.test",
+        "bank_account_number": "111222333", "bank_ifsc": "not-an-ifsc",
+    })
+    assert resp.status_code == 400
+    assert "bank_ifsc" in resp.json()
+
+
+def test_ap_admin_cannot_create_vendor_with_invalid_bank_account_number(auth_client_ap_admin):
+    resp = auth_client_ap_admin.post("/api/vendors/", {
+        "name": "New Vendor", "gstin": "29AABCU9603R1ZJ", "email": "x@x.test",
+        "bank_account_number": "not-a-number", "bank_ifsc": "ICIC0001234",
+    })
+    assert resp.status_code == 400
+    assert "bank_account_number" in resp.json()
 
 
 def test_ap_admin_can_deactivate_vendor(auth_client_ap_admin, vendor):

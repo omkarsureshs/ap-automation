@@ -30,12 +30,38 @@ status; a purchase order should be linked first to demonstrate the full match �
 | Vendor | Stellar Hardware Co |
 | Amount | ₹67,800.00 |
 
-A matching vendor (same GSTIN) and a corresponding purchase order on `/purchase-orders` must be
-created before this file is uploaded, so that the upload can include the linked PO (via the API/curl,
-per scenario 6 in the testing guide — the upload form does not expose a PO picker):
+A matching vendor (same GSTIN) must be created first. A purchase order is then created by importing a
+CSV file on `/purchase-orders` (the "Import CSV" button) — this is the only way to create a purchase
+order; there is no manual entry form. The CSV must have exactly these three column headers:
 
-- A PO total of **₹68,000** (0.3% variance) falls within the 1% tolerance, resulting in a match and
-  routing to Pending Approval.
+```
+po_number,vendor_gstin,total_amount
+```
+
+A ready-to-use file with a matching PO is provided at
+[`sample-purchase-orders.csv`](sample-purchase-orders.csv):
+
+```
+po_number,vendor_gstin,total_amount
+PO-DEMO-001,27STLHW5678Q1Z7,"68,000.00"
+```
+
+A purchase order cannot be linked to an invoice after the invoice is uploaded — the upload form has no
+PO picker, and the correction endpoint used for fixing OCR-misread fields does not accept a purchase
+order either. The link is made at upload time, via the API, with the PO's id from the response above
+(here, `1`, assuming a fresh database):
+
+```bash
+curl -X POST http://localhost:8000/api/invoices/ \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -F "file=@docs/sample-invoices/test-invoice-stellar.pdf" \
+  -F "purchase_order=1"
+```
+
+`ACCESS_TOKEN` is the `access` value returned by `POST /api/auth/login/` for `requester@demo.com`.
+
+- A PO total of **₹68,000** (0.3% variance from the invoice's ₹67,800) falls within the 1% tolerance,
+  resulting in a match and routing to Pending Approval.
 - A PO total of **₹71,000** (approximately 4.7% variance) exceeds tolerance, resulting in a mismatch
   and routing to Needs Review.
 

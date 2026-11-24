@@ -16,9 +16,11 @@ def _cell(row, key):
 
 
 def _parse_positive_amount(raw_value):
+    # Accept thousands-separator commas (e.g. "68,000.00") since that's how
+    # amounts are written everywhere else in this project's own documentation.
     try:
-        amount = Decimal(raw_value)
-    except (InvalidOperation, TypeError):
+        amount = Decimal(raw_value.replace(",", ""))
+    except (InvalidOperation, TypeError, AttributeError):
         return None
     if not amount.is_finite() or amount <= 0 or amount > _MAX_AMOUNT:
         return None
