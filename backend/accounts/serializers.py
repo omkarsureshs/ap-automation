@@ -20,3 +20,12 @@ class RegisterSerializer(serializers.ModelSerializer):
         # not chosen by the registering client — see Day 1 final review.
         validated_data["role"] = User.ROLE_REQUESTER
         return User.objects.create_user(**validated_data)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Lets an AP Admin see every account and change its role or active status."""
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "role", "is_active"]
+        read_only_fields = ["id", "email"]

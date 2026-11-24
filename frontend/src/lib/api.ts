@@ -507,3 +507,61 @@ export async function downloadReportCsv(kind: ReportKind): Promise<void> {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+export interface ManagedUser {
+  id: number
+  email: string
+  role: string
+  is_active: boolean
+}
+
+export async function listUsers(): Promise<ManagedUser[]> {
+  const resp = await authedFetch('/api/auth/users/')
+  return handleJsonResponse(resp)
+}
+
+export async function updateUser(id: number, data: Partial<{ role: string; is_active: boolean }>): Promise<ManagedUser> {
+  const resp = await authedFetch(`/api/auth/users/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleJsonResponse(resp)
+}
+
+export interface ApprovalRule {
+  id: number
+  min_amount: string
+  max_amount: string
+  approver_roles: string[]
+  escalation_hours: number
+  is_active: boolean
+}
+
+export async function listApprovalRules(): Promise<ApprovalRule[]> {
+  const resp = await authedFetch('/api/workflow/approval-rules/')
+  return handleJsonResponse(resp)
+}
+
+export async function createApprovalRule(data: Omit<ApprovalRule, 'id'>): Promise<ApprovalRule> {
+  const resp = await authedFetch('/api/workflow/approval-rules/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleJsonResponse(resp)
+}
+
+export async function updateApprovalRule(id: number, data: Partial<Omit<ApprovalRule, 'id'>>): Promise<ApprovalRule> {
+  const resp = await authedFetch(`/api/workflow/approval-rules/${id}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  return handleJsonResponse(resp)
+}
+
+export async function deleteApprovalRule(id: number): Promise<void> {
+  const resp = await authedFetch(`/api/workflow/approval-rules/${id}/`, { method: 'DELETE' })
+  return handleNoContentResponse(resp)
+}

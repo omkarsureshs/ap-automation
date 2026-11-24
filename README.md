@@ -34,8 +34,9 @@ Built as a recruitment take-home for Templegate Technologies. Stack: Django 5 + 
 | OCR extraction | Real | Tesseract (LSTM engine) via pytesseract + pdf2image/Poppler. Header-field extraction is deliberately regex, not an LLM, for predictability; line-item extraction uses an LLM instead, as it cannot be reliably done with pattern matching. Runs synchronously inside the upload request. |
 | Line-item extraction | Real, LLM-based, best-effort | `invoices/llm_extraction.py` calls Google Gemini (free tier) with the OCR'd text for a structured JSON line-item list. Optional: does nothing if `GEMINI_API_KEY` isn't set, never blocks an upload if it fails. |
 | Validation engine | Real | Mandatory fields, GSTIN modulo-36 checksum, vendor master check, amount, duplicate detection; failures become exception rows. |
-| PO matching | Real | 2-way (PO vs invoice) and 3-way (PO vs GRN vs invoice), 1% tolerance. PO/GRN entered via CRUD or CSV import (no real ERP). |
-| Workflow / approvals | Real | Configurable amount-based ApprovalRule matrix, parallel steps, escalation command, in-app notifications plus email (console backend by default). |
+| PO matching | Real | 2-way (PO vs invoice) and 3-way (PO vs GRN vs invoice), 1% tolerance. PO/GRN entered via CRUD or CSV import (no real ERP). A purchase order can be linked at upload time or afterward (AP Admin, while the invoice is still Validated or Needs Review) — see `invoices/views.py::InvoiceLinkPurchaseOrderView`. |
+| Workflow / approvals | Real | Configurable amount-based ApprovalRule matrix, managed by AP Admin through the Settings page (or the API) rather than only by direct DB/seed access; parallel steps, escalation command, in-app notifications plus email (console backend by default). |
+| Access control (RBAC) | Real | AP Admin can view every account and change its role or active status from the Settings page; an admin can't change their own role or deactivate their own account (self-lockout guard). |
 | Vendor management | Real | Vendor master; bank details encrypted at rest (Fernet) and masked for non-admins. |
 | Payments | Real tracking, **mocked bank** | `BankingGateway` abstract interface with `MockBankingGateway` (always succeeds). Selected by the `BANKING_GATEWAY` env var. No real bank is called. |
 | Dashboards | Real | Summary endpoint over real data (see plan doc for the metrics). |

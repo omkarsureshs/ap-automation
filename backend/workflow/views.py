@@ -1,9 +1,12 @@
+from django.db.models import ProtectedError
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from workflow.models import ApprovalStep, Notification
-from workflow.serializers import ApprovalStepSerializer, NotificationSerializer
+from accounts.permissions import HasRole
+from workflow.models import ApprovalRule, ApprovalStep, Notification
+from workflow.serializers import ApprovalRuleSerializer, ApprovalStepSerializer, NotificationSerializer
 from workflow.services import AlreadyDecidedError, decide_step
 
 
@@ -55,3 +58,19 @@ class NotificationViewSet(viewsets.ReadOnlyModelViewSet):
         notification.is_read = True
         notification.save()
         return Response(NotificationSerializer(notification).data, status=status.HTTP_200_OK)
+
+
+class ApprovalRuleViewSet(viewsets.ModelViewSet):
+    """AP Admin sets the amount-based approval matrix: who approves what, and how fast."""
+
+    queryset = ApprovalRule.objects.all().order_by("min_amount")
+    serializer_class = ApprovalRuleSerializer
+    permission_classes = [HasRole("ap_admin")]
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except ProtectedError:
+            raise ValidationError(
+                {"detail": "This rule has approval steps on file and can't be deleted. Deactivate it instead."}
+            )

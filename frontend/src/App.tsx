@@ -6,7 +6,7 @@ import { Logo } from '@/components/Logo'
 import { NotificationBell } from '@/components/NotificationBell'
 import { ToastProvider } from '@/components/ui/toast'
 import { AUTH_CHANGE_EVENT, getCurrentUser, isLoggedIn, logout } from '@/lib/api'
-import { landingPageFor } from '@/lib/nav'
+import { landingPageFor, ROLE_LABELS } from '@/lib/nav'
 
 /** Forces the whole app to re-render right after login/logout, since
  * isLoggedIn()/getCurrentUser() read localStorage directly rather than
@@ -19,13 +19,6 @@ function useAuthRerender() {
     window.addEventListener(AUTH_CHANGE_EVENT, handler)
     return () => window.removeEventListener(AUTH_CHANGE_EVENT, handler)
   }, [])
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  requester: 'Requester',
-  approver: 'Approver',
-  ap_admin: 'AP Admin',
-  vendor: 'Vendor',
 }
 
 function UserMenu() {
@@ -58,6 +51,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { PaymentsPage } from '@/pages/PaymentsPage'
 import { PurchaseOrdersPage } from '@/pages/PurchaseOrdersPage'
 import { ReportsPage } from '@/pages/ReportsPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { UploadPage } from '@/pages/UploadPage'
 import { VendorsPage } from '@/pages/VendorsPage'
 
@@ -76,6 +70,7 @@ const NAV_LINKS: { to: string; label: string; roles: string[] | null }[] = [
   { to: '/approvals', label: 'Approvals', roles: ['requester', 'approver', 'ap_admin'] },
   { to: '/payments', label: 'Payments', roles: ['ap_admin', 'approver'] },
   { to: '/reports', label: 'Reports', roles: ['ap_admin', 'approver'] },
+  { to: '/settings', label: 'Settings', roles: ['ap_admin'] },
 ]
 
 function Nav() {
@@ -164,6 +159,14 @@ function AppShell() {
                 element={
                   <RequireAuth>
                     <ReportsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <RequireAuth>
+                    <SettingsPage />
                   </RequireAuth>
                 }
               />
