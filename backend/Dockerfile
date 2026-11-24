@@ -25,13 +25,23 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Migrate on every start (idempotent), then serve. OCR is synchronous, so keep a long timeout.
-# --users-only: a deployed instance should start genuinely empty (no synthetic
-# demo-001..012 invoices), not pre-populated -- just the 4 login accounts and
-# the one approval rule needed for the workflow to function at all.
+# --users-only (default): a deployed instance should start genuinely empty (no
+# synthetic demo-001..012 invoices), not pre-populated -- just the 4 login
+# accounts and the one approval rule needed for the workflow to function at all.
 #
-# WIPE_BUSINESS_DATA_ON_BOOT: unset by default. On a platform with no shell access
+# SEED_DEMO_DATA_ON_BOOT: unset by default. On a platform with no shell access
 # (e.g. Render's free tier), set this env var to "true" in the dashboard and
-# redeploy to clear out accumulated test data without touching the 4 logins or the
-# approval rule; then unset it (or set to anything else) and redeploy again so it
-# doesn't wipe on every future restart.
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo --users-only && if [ \"$WIPE_BUSINESS_DATA_ON_BOOT\" = \"true\" ]; then python manage.py wipe_business_data; fi && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
+# redeploy to populate the same small, idempotent demo dataset used throughout
+# this project's own testing (3 vendors, a dozen invoices across every status,
+# POs/GRNs, a couple of payments) -- enough for the dashboard charts and
+# reports to show something real, without hand-creating it through the UI.
+# It never touches data already created by hand (vendors/invoices are keyed by
+# GSTIN/invoice number, so re-running is a no-op for anything that already
+# exists). Unset it again (or set to anything else) and redeploy once more so
+# it doesn't re-seed on every future restart.
+#
+# WIPE_BUSINESS_DATA_ON_BOOT: unset by default. Set this env var to "true" in
+# the dashboard and redeploy to clear out accumulated test data without
+# touching the 4 logins or the approval rule; then unset it (or set to
+# anything else) and redeploy again so it doesn't wipe on every future restart.
+CMD ["sh", "-c", "python manage.py migrate --noinput && if [ \"$SEED_DEMO_DATA_ON_BOOT\" = \"true\" ]; then python manage.py seed_demo; else python manage.py seed_demo --users-only; fi && if [ \"$WIPE_BUSINESS_DATA_ON_BOOT\" = \"true\" ]; then python manage.py wipe_business_data; fi && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
