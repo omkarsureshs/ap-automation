@@ -1,3 +1,4 @@
+import base64
 import os
 import sys
 from datetime import timedelta
@@ -149,7 +150,9 @@ CORS_ALLOWED_ORIGINS = os.environ.get(
     "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 ).split(",")
 
-_INSECURE_DEV_ENCRYPTION_KEY = "5jSPG1dfV8s1PDQvbop6xsz-wgBV1HGaOUrJyxlNPxY="
+# Computed, not a literal string: a real-looking Fernet key committed as text (even an
+# unused dev-only one) is exactly the shape secret scanners (e.g. GitGuardian) flag.
+_INSECURE_DEV_ENCRYPTION_KEY = base64.urlsafe_b64encode(b"\0" * 32).decode()
 FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", _INSECURE_DEV_ENCRYPTION_KEY)
 if not DEBUG and FIELD_ENCRYPTION_KEY == _INSECURE_DEV_ENCRYPTION_KEY:
     raise ImproperlyConfigured(
