@@ -28,4 +28,10 @@ EXPOSE 8000
 # --users-only: a deployed instance should start genuinely empty (no synthetic
 # demo-001..012 invoices), not pre-populated -- just the 4 login accounts and
 # the one approval rule needed for the workflow to function at all.
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo --users-only && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
+#
+# WIPE_BUSINESS_DATA_ON_BOOT: unset by default. On a platform with no shell access
+# (e.g. Render's free tier), set this env var to "true" in the dashboard and
+# redeploy to clear out accumulated test data without touching the 4 logins or the
+# approval rule; then unset it (or set to anything else) and redeploy again so it
+# doesn't wipe on every future restart.
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py seed_demo --users-only && if [ \"$WIPE_BUSINESS_DATA_ON_BOOT\" = \"true\" ]; then python manage.py wipe_business_data; fi && exec gunicorn apconfig.wsgi:application --bind 0.0.0.0:${PORT} --workers ${WEB_CONCURRENCY:-3} --timeout 120"]
